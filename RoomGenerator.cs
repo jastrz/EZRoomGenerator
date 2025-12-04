@@ -8,7 +8,11 @@ using System.IO;
 
 namespace EZRoomGen
 {
-
+    /// <summary>
+    /// Main component for procedural room generation from a grid-based layout.
+    /// Provides grid editing, mesh generation, lighting placement, and FBX export functionality.
+    /// Can be used both at runtime and in the Unity Editor.
+    /// </summary>
     [ExecuteAlways]
     public class RoomGenerator : MonoBehaviour
     {
@@ -60,6 +64,10 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Initializes or reinitializes the grid data structure.
+        /// Creates a new grid if it doesn't exist or if dimensions have changed.
+        /// </summary>
         public void InitializeGrid()
         {
             if (gridData == null || gridData.gridWidth != gridWidth || gridData.gridHeight != gridHeight)
@@ -68,6 +76,10 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Sets the height of a specific grid cell.
+        /// </summary>
+        /// <param name="height">The height value to set. Use 0 for empty cells.</param>
         public void SetCellHeight(int x, int y, float height)
         {
             if (gridData == null) InitializeGrid();
@@ -78,6 +90,10 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Gets the height of a specific grid cell.
+        /// </summary>
+        /// <returns>The height of the cell, or 0 if coordinates are out of bounds.</returns>
         public float GetCellHeight(int x, int y)
         {
             if (gridData == null) InitializeGrid();
@@ -89,6 +105,9 @@ namespace EZRoomGen
             return 0f;
         }
 
+        /// <summary>
+        /// Toggles a cell between active (default height) and inactive (height 0).
+        /// </summary>
         public void ToggleCell(int x, int y)
         {
             if (gridData == null) InitializeGrid();
@@ -99,6 +118,10 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Clears all cells in the grid, setting all heights to 0.
+        /// Also resets the selected cell indices.
+        /// </summary>
         public void ClearGrid()
         {
             if (gridData == null) InitializeGrid();
@@ -107,12 +130,10 @@ namespace EZRoomGen
             selectedY = -1;
         }
 
-        public void FillGrid()
-        {
-            if (gridData == null) InitializeGrid();
-            gridData.FillGrid(defaultHeight);
-        }
-
+        /// <summary>
+        /// Resizes the grid to new dimensions, preserving existing cell data where possible.
+        /// Dimensions are clamped between 2 and 50.
+        /// </summary>
         public void ResizeGrid(int newWidth, int newHeight)
         {
             gridWidth = Mathf.Clamp(newWidth, 2, 50);
@@ -124,7 +145,7 @@ namespace EZRoomGen
             }
             else
             {
-                gridData.ResizeGrid(gridWidth, gridHeight);
+                gridData.ResizeGrid(ref gridWidth, ref gridHeight);
             }
 
             if (selectedX >= gridData.gridWidth || selectedY >= gridData.gridHeight)
@@ -134,6 +155,11 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Generates the room mesh from the current grid data.
+        /// Destroys any previously generated room and creates a new one with floors, walls, roof, and optional lighting.
+        /// </summary>
+        /// <returns>The newly generated room GameObject, or null if generation failed.</returns>
         public GameObject GenerateRoom()
         {
             if (gridData == null) InitializeGrid();
@@ -181,6 +207,9 @@ namespace EZRoomGen
             return roomObject;
         }
 
+        /// <summary>
+        /// Destroys the currently generated room GameObject.
+        /// </summary>
         public void ClearRoom()
         {
             if (roomObject != null)
@@ -193,81 +222,61 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Gets the currently generated room GameObject.
+        /// </summary>
+        /// <returns>The room GameObject, or null if no room has been generated.</returns>
         public GameObject GetRoomObject()
         {
             return roomObject;
         }
 
-        private bool HasActiveCells()
-        {
-            if (gridData == null) return false;
-
-            for (int y = 0; y < gridData.gridHeight; y++)
-            {
-                for (int x = 0; x < gridData.gridWidth; x++)
-                {
-                    if (gridData.cells[x, y].height > 0)
-                        return true;
-                }
-            }
-            return false;
-        }
-
-        private void AddCollidersToRoom(GameObject room)
-        {
-            foreach (Transform child in room.GetComponentsInChildren<Transform>(true))
-            {
-                if (child.name == "Floor" || child.name == "Walls")
-                {
-                    MeshCollider collider = child.gameObject.GetComponent<MeshCollider>();
-                    if (collider == null)
-                    {
-                        collider = child.gameObject.AddComponent<MeshCollider>();
-                    }
-                }
-            }
-        }
-
-        public void LoadGridFromArray(float[,] heightData)
-        {
-            if (heightData == null) return;
-
-            int width = heightData.GetLength(0);
-            int height = heightData.GetLength(1);
-
-            ResizeGrid(width, height);
-
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    gridData.cells[x, y].height = heightData[x, y];
-                }
-            }
-        }
-
-        public float[,] ExportGridToArray()
+        /// <summary>
+        /// Gets the state of a specific wall on a grid cell.
+        /// </summary>
+        /// <returns>True if the wall is enabled; false otherwise. Returns true if coordinates are out of bounds.</returns>
+        public bool GetCellWall(int x, int y, WallSide wall)
         {
             if (gridData == null) InitializeGrid();
 
-            float[,] heightData = new float[gridData.gridWidth, gridData.gridHeight];
-
-            for (int x = 0; x < gridData.gridWidth; x++)
+            if (x >= 0 && x < gridData.gridWidth && y >= 0 && y < gridData.gridHeight)
             {
-                for (int y = 0; y < gridData.gridHeight; y++)
-                {
-                    heightData[x, y] = gridData.cells[x, y].height;
-                }
+                return GetWallValue(gridData.cells[x, y], wall);
             }
-
-            return heightData;
+            return true;
         }
 
-        private void OnDestroy()
+        /// <summary>
+        /// Sets the state of a specific wall on a grid cell.
+        /// </summary>
+        public void SetCellWall(int x, int y, WallSide wall, bool enabled)
         {
-            ClearRoom();
+            if (gridData == null) InitializeGrid();
+
+            if (x >= 0 && x < gridData.gridWidth && y >= 0 && y < gridData.gridHeight)
+            {
+                SetWallValue(gridData.cells[x, y], wall, enabled);
+            }
         }
 
+        /// <summary>
+        /// Toggles the state of a specific wall on a grid cell between enabled and disabled.
+        /// </summary>
+        public void ToggleCellWall(int x, int y, WallSide wall)
+        {
+            if (gridData == null) InitializeGrid();
+
+            if (x >= 0 && x < gridData.gridWidth && y >= 0 && y < gridData.gridHeight)
+            {
+                Cell cell = gridData.cells[x, y];
+                SetWallValue(cell, wall, !GetWallValue(cell, wall));
+            }
+        }
+
+        /// <summary>
+        /// Creates a simple hollow rectangular room with walls on the perimeter.
+        /// Clears the existing grid and generates a new room automatically.
+        /// </summary>
         public void CreateSimpleRoom()
         {
             ClearGrid();
@@ -286,7 +295,132 @@ namespace EZRoomGen
             GenerateRoom();
         }
 
+        /// <summary>
+        /// Loads grid data from a 2D height array.
+        /// Resizes the grid to match the array dimensions and copies all height values.
+        /// </summary>
+        /// <param name="heightData">2D array of height values where [x,y] corresponds to grid cell coordinates.</param>
+        public void LoadGridFromArray(float[,] heightData)
+        {
+            if (heightData == null) return;
+
+            int width = heightData.GetLength(0);
+            int height = heightData.GetLength(1);
+
+            ResizeGrid(width, height);
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    gridData.cells[x, y].height = heightData[x, y];
+                }
+            }
+        }
+
+        /// <summary>
+        /// Exports the current grid data to a 2D height array.
+        /// </summary>
+        /// <returns>A 2D float array containing all cell height values.</returns>
+        public float[,] ExportGridToArray()
+        {
+            if (gridData == null) InitializeGrid();
+
+            float[,] heightData = new float[gridData.gridWidth, gridData.gridHeight];
+
+            for (int x = 0; x < gridData.gridWidth; x++)
+            {
+                for (int y = 0; y < gridData.gridHeight; y++)
+                {
+                    heightData[x, y] = gridData.cells[x, y].height;
+                }
+            }
+
+            return heightData;
+        }
+
+        private bool GetWallValue(Cell cell, WallSide wall)
+        {
+            return wall switch
+            {
+                WallSide.Left => cell.leftWall,
+                WallSide.Right => cell.rightWall,
+                WallSide.Back => cell.backWall,
+                WallSide.Front => cell.frontWall,
+                _ => true
+            };
+        }
+
+        private void SetWallValue(Cell cell, WallSide wall, bool value)
+        {
+            switch (wall)
+            {
+                case WallSide.Left:
+                    cell.leftWall = value;
+                    break;
+                case WallSide.Right:
+                    cell.rightWall = value;
+                    break;
+                case WallSide.Back:
+                    cell.backWall = value;
+                    break;
+                case WallSide.Front:
+                    cell.frontWall = value;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Checks if the grid has any cells with height greater than 0.
+        /// </summary>
+        /// <returns>True if at least one cell is active; false if all cells are empty.</returns>
+        private bool HasActiveCells()
+        {
+            if (gridData == null) return false;
+
+            for (int y = 0; y < gridData.gridHeight; y++)
+            {
+                for (int x = 0; x < gridData.gridWidth; x++)
+                {
+                    if (gridData.cells[x, y].height > 0)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Adds MeshCollider components to the floor and wall meshes of the generated room.
+        /// </summary>
+        /// <param name="room">The room GameObject to add colliders to.</param>
+        private void AddCollidersToRoom(GameObject room)
+        {
+            foreach (Transform child in room.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name == "Floor" || child.name == "Walls")
+                {
+                    MeshCollider collider = child.gameObject.GetComponent<MeshCollider>();
+                    if (collider == null)
+                    {
+                        collider = child.gameObject.AddComponent<MeshCollider>();
+                    }
+                }
+            }
+        }
+
+        private void OnDestroy()
+        {
+            ClearRoom();
+        }
+
+
+
 #if UNITY_EDITOR
+        /// <summary>
+        /// Exports the currently generated room as an FBX file.
+        /// Only available in the Unity Editor. Creates the directory if it doesn't exist.
+        /// </summary>
+        /// <param name="path">Full file path for the exported FBX file (including .fbx extension).</param>
         public void ExportRoomAsFBX(string path)
         {
             if (roomObject == null)

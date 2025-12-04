@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace EZRoomGen
 {
+    /// <summary>
+    /// Generates procedural room meshes from grid data.
+    /// Creates separate mesh objects for floors, walls, and roofs with configurable materials and subdivision.
+    /// </summary>
     public class RoomMeshGenerator
     {
         private GridData gridData;
@@ -17,6 +21,17 @@ namespace EZRoomGen
         // Slight lift to prevent clipping
         private float roofOffset = 0.0f;
 
+        /// <summary>
+        /// Initializes a new instance of the RoomMeshGenerator class.
+        /// </summary>
+        /// <param name="gridData">The grid data containing cell heights and wall information.</param>
+        /// <param name="uvScale">Scale factor for UV coordinates.</param>
+        /// <param name="meshResolution">Number of subdivisions per mesh quad side.</param>
+        /// <param name="cellWinding">Triangle winding order mode (normal, flipped, or double-sided).</param>
+        /// <param name="floorMaterial">Material to apply to floor meshes. Uses default if null.</param>
+        /// <param name="wallMaterial">Material to apply to wall meshes. Uses default if null.</param>
+        /// <param name="roofMaterial">Material to apply to roof meshes. Uses default if null.</param>
+        /// <param name="invertRoof">If true, creates inverted roof covering empty cells instead of room tiles.</param>
         public RoomMeshGenerator(GridData gridData, float uvScale, int meshResolution, CellWinding cellWinding,
             Material floorMaterial, Material wallMaterial, Material roofMaterial, bool invertRoof)
         {
@@ -30,6 +45,11 @@ namespace EZRoomGen
             this.invertRoof = invertRoof;
         }
 
+        /// <summary>
+        /// Generates the complete room as a GameObject hierarchy with separate child meshes for floor, walls, and roof.
+        /// Walls are only created where there's a height difference between adjacent cells or at grid boundaries.
+        /// </summary>
+        /// <returns>A new GameObject containing the generated room meshes as children.</returns>
         public GameObject GenerateRoom()
         {
             GameObject roomObject = new GameObject("Generated Room");
@@ -56,7 +76,7 @@ namespace EZRoomGen
                     bool flipped = cellWinding == CellWinding.Flipped;
                     bool doubleSided = cellWinding == CellWinding.DoubleSided;
 
-                    // FLOOR
+                    // Floor
                     MeshUtils.AddSubdividedQuad(
                         floorVerts, floorTris, floorUVs,
                         new Vector3(x, 0, y),
@@ -66,7 +86,7 @@ namespace EZRoomGen
                         flipped, doubleSided, uvScale, meshResolution
                     );
 
-                    // CEILING 
+                    // Ceiling 
                     if (!invertRoof)
                     {
                         MeshUtils.AddSubdividedQuad(
@@ -79,13 +99,14 @@ namespace EZRoomGen
                         );
                     }
 
-                    // WALLS
+                    // Walls
                     float leftHeight = x > 0 ? gridData.cells[x - 1, y].height : 0;
                     float rightHeight = x < gridData.gridWidth - 1 ? gridData.cells[x + 1, y].height : 0;
                     float backHeight = y > 0 ? gridData.cells[x, y - 1].height : 0;
                     float frontHeight = y < gridData.gridHeight - 1 ? gridData.cells[x, y + 1].height : 0;
 
-                    if (leftHeight < height)
+                    // Left Wall (at x, facing negative X)
+                    if (leftHeight < height && gridData.cells[x, y].leftWall)
                     {
                         MeshUtils.AddSubdividedQuad(
                             wallVerts, wallTris, wallUVs,
@@ -97,7 +118,8 @@ namespace EZRoomGen
                         );
                     }
 
-                    if (rightHeight < height)
+                    // Right Wall (at x+1, facing positive X)
+                    if (rightHeight < height && gridData.cells[x, y].rightWall)
                     {
                         MeshUtils.AddSubdividedQuad(
                             wallVerts, wallTris, wallUVs,
@@ -109,7 +131,8 @@ namespace EZRoomGen
                         );
                     }
 
-                    if (backHeight < height)
+                    // Back Wall (at y, facing negative Y)
+                    if (backHeight < height && gridData.cells[x, y].backWall)
                     {
                         MeshUtils.AddSubdividedQuad(
                             wallVerts, wallTris, wallUVs,
@@ -121,7 +144,8 @@ namespace EZRoomGen
                         );
                     }
 
-                    if (frontHeight < height)
+                    // Front Wall (at y+1, facing positive Y)
+                    if (frontHeight < height && gridData.cells[x, y].frontWall)
                     {
                         MeshUtils.AddSubdividedQuad(
                             wallVerts, wallTris, wallUVs,
@@ -135,7 +159,6 @@ namespace EZRoomGen
                 }
             }
 
-            // INVERTED ROOF
             if (invertRoof)
             {
                 CreateExteriorRoof(roofVerts, roofTris, roofUVs);
@@ -155,7 +178,14 @@ namespace EZRoomGen
             return roomObject;
         }
 
-        // Inverted roof
+        /// <summary>
+        /// Creates an inverted roof that covers empty (height == 0) cells instead of room cells.
+        /// Useful for creating exterior environments or sky-blocking geometry.
+        /// The roof is placed at the maximum height found in the grid plus a small offset.
+        /// </summary>
+        /// <param name="verts">List to append roof vertex positions to.</param>
+        /// <param name="tris">List to append roof triangle indices to.</param>
+        /// <param name="uvs">List to append roof UV coordinates to.</param>
         private void CreateExteriorRoof(List<Vector3> verts, List<int> tris, List<Vector2> uvs)
         {
             float maxHeight = 0;
@@ -192,6 +222,10 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Gets a default material appropriate for the current render pipeline.
+        /// </summary>
+        /// <returns>A new Material instance using a pipeline-appropriate shader.</returns>
         private Material GetDefaultMaterial()
         {
             Shader hdrpShader = Shader.Find("HDRP/Lit");

@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace EZRoomGen
 {
+    /// <summary>
+    /// Handles the placement of ceiling lights in procedurally generated rooms and corridors.
+    /// Automatically distributes lights based on tile type and configurable spacing rules.
+    /// </summary>
     public class LightsPlacer
     {
         private enum LightPlaceMode
@@ -16,6 +20,9 @@ namespace EZRoomGen
         private GridData gridData;
         private LightPlaceMode lightPlaceMode;
 
+        /// <summary>
+        /// Initializes a new instance of the LightsPlacer class.
+        /// </summary>
         public LightsPlacer(GridData gridData)
         {
             this.gridData = gridData;
@@ -24,6 +31,10 @@ namespace EZRoomGen
             lightPlaceMode = LightPlaceMode.Prefab;
         }
 
+        /// <summary>
+        /// Places ceiling lights throughout the grid based on tile type (room vs corridor).
+        /// Clears any previously placed lights and distributes new lights with specified spacing.
+        /// </summary>
         public void AddCeilingLights(GameObject parent, GameObject lampPrefab, float roomSpacing, float corridorSpacing)
         {
             placedLights = new List<Vector3>();
@@ -94,6 +105,9 @@ namespace EZRoomGen
             }
         }
 
+        /// <summary>
+        /// Checks if the specified grid cell is walkable (has positive height).
+        /// </summary>
         private bool IsWalkable(int x, int y)
         {
             if (x < 0 || y < 0 || x >= gridData.gridWidth || y >= gridData.gridHeight)
@@ -102,6 +116,9 @@ namespace EZRoomGen
             return gridData.cells[x, y].height > 0;
         }
 
+        /// <summary>
+        /// Counts the number of walkable neighbors (up, down, left, right) for a given grid cell.
+        /// </summary>
         private int CountWalkableNeighbors(int x, int y)
         {
             int count = 0;
@@ -123,7 +140,7 @@ namespace EZRoomGen
 
             int n = CountWalkableNeighbors(x, y);
 
-            return n >= 3;  // Wide open → room
+            return n >= 3;
         }
 
         /// <summary>
@@ -135,7 +152,7 @@ namespace EZRoomGen
 
             int n = CountWalkableNeighbors(x, y);
 
-            return n == 1 || n == 2; // Thin path → corridor
+            return n == 1 || n == 2;
         }
 
     }

@@ -3,8 +3,27 @@ using UnityEngine;
 
 namespace EZRoomGen
 {
+    /// <summary>
+    /// Utility class for procedural mesh generation and manipulation.
+    /// Provides methods for creating subdivided quads and assembling mesh objects.
+    /// </summary>
     public static class MeshUtils
     {
+        /// <summary>
+        /// Adds a subdivided quad to the provided mesh data lists.
+        /// The quad is divided into a grid of smaller quads based on meshResolution.
+        /// </summary>
+        /// <param name="verts">List to append vertex positions to.</param>
+        /// <param name="tris">List to append triangle indices to.</param>
+        /// <param name="uvs">List to append UV coordinates to.</param>
+        /// <param name="v0">Bottom-left corner of the quad.</param>
+        /// <param name="v1">Bottom-right corner of the quad.</param>
+        /// <param name="v2">Top-right corner of the quad.</param>
+        /// <param name="v3">Top-left corner of the quad.</param>
+        /// <param name="flip">If true, flips the triangle winding order.</param>
+        /// <param name="doubleSided">If true, creates back-facing triangles as well (default: true).</param>
+        /// <param name="uvScale">Scale factor for UV coordinates (default: 1f).</param>
+        /// <param name="meshResolution">Number of subdivisions per side (default: 2).</param>
         public static void AddSubdividedQuad(
             List<Vector3> verts,
             List<int> tris,
@@ -87,7 +106,17 @@ namespace EZRoomGen
                 }
             }
         }
-
+        
+        /// <summary>
+        /// Creates a new GameObject with a mesh constructed from the provided vertex, triangle, and UV data.
+        /// Automatically recalculates normals and bounds. Does nothing if vertices list is empty.
+        /// </summary>
+        /// <param name="name">Name for the created GameObject.</param>
+        /// <param name="vertices">List of vertex positions.</param>
+        /// <param name="triangles">List of triangle indices.</param>
+        /// <param name="uvs">List of UV coordinates.</param>
+        /// <param name="mat">Material to apply to the mesh renderer.</param>
+        /// <param name="parent">Parent GameObject to attach the new object to.</param>
         public static void CreateMeshObject(string name, List<Vector3> vertices, List<int> triangles, List<Vector2> uvs, Material mat, GameObject parent)
         {
             if (vertices.Count == 0) return;
