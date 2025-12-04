@@ -1,0 +1,165 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace EZRoomGen.Core
+{
+    /// <summary>
+    /// Handles the placement of ceiling lights in procedurally generated rooms and corridors.
+    /// Automatically distributes lights based on tile type and configurable spacing rules.
+    /// </summary>
+    public class LightsPlacer
+    {
+        private enum LightPlaceMode
+        {
+            Light,
+            Prefab
+        }
+
+        private List<GameObject> placedLightsObjects = new List<GameObject>();
+        private GridData gridData;
+        private LightPlaceMode lightPlacementMode;
+
+        /// <summary>
+        /// Initializes a new instance of the LightsPlacer class.
+        /// </summary>
+        public LightsPlacer(GridData gridData)
+        {
+            this.gridData = gridData;
+            placedLightsObjects = new List<GameObject>();
+            lightPlacementMode = LightPlaceMode.Prefab;
+        }
+
+        /// <summary>
+        /// Places ceiling lights throughout the grid based on tile type (room vs corridor).
+        /// Clears any previously placed lights and distributes new lights with specified spacing.
+        /// </summary>
+        public void AddCeilingLights(GameObject parent, GameObject lampPrefab, float roomSpacing, float corridorSpacing)
+        {
+
+            if (placedLightsObjects.Count > 0)
+            {
+                for (int i = placedLightsObjects.Count - 1; i >= 0; i--)
+                {
+                    GameObject.DestroyImmediate(placedLightsObjects[i]);
+                }
+            }
+
+            for (int y = 0; y < gridData.gridHeight; y++)
+            {
+                for (int x = 0; x < gridData.gridWidth; x++)
+                {
+                    float height = gridData.cells[x, y].height;
+                    if (height <= 0) continue;
+
+                    // Determine lighting rules
+                    bool inRoom = IsRoom(x, y);
+                    bool inCorridor = IsCorridor(x, y);
+
+                    if (!inRoom && !inCorridor)
+                        continue;
+
+                    float spacing = inRoom ? roomSpacing : corridorSpacing;
+
+                    // Compute world position of the light (center of the tile, at the roof)
+                    Vector3 localLightPos = new Vector3(x + 0.5f, height, y + 0.5f);
+                    Vector3 lightPos = parent.transform.TransformPoint(localLightPos);
+
+                    // Check if too close to an already placed light
+                    bool tooClose = false;
+                    foreach (var l in placedLightsObjects)
+                    {
+                        if (Vector3.Distance(l.transform.position, lightPos) < spacing)
+                        {
+                            tooClose = true;
+                            break;
+                        }
+                    }
+
+                    if (tooClose)
+                        continue;
+
+                    GameObject lightObject;
+
+                    if (lightPlacementMode == LightPlaceMode.Prefab)
+                    {
+                        lightObject = CreateLampPrefab(lampPrefab, parent, lightPos);
+                    }
+                    else
+                    {
+                        lightObject = CreatePointLight(parent, inRoom, lightPos);
+                    }
+
+                    placedLightsObjects.Add(lightObject);
+                }
+            }
+        }
+
+        private GameObject CreatePointLight(GameObject parent, bool inRoom, Vector3 lightPos)
+        {
+            GameObject lightObject = new GameObject("CeilingLight");
+            lightObject.transform.parent = parent.transform;
+            lightObject.transform.position = lightPos;
+
+            Light light = lightObject.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.range = inRoom ? 6f : 4f;
+            light.intensity = inRoom ? 1.7f : 1.2f;
+            return lightObject;
+        }
+
+        private GameObject CreateLampPrefab(GameObject lampPrefab, GameObject parent, Vector3 lightPos)
+        {
+            return GameObject.Instantiate(lampPrefab, lightPos, Quaternion.Euler(90, 90, 0), parent.transform);
+        }
+
+        /// <summary>
+        /// Checks if the specified grid cell is walkable (has positive height).
+        /// </summary>
+        private bool IsWalkable(int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= gridData.gridWidth || y >= gridData.gridHeight)
+                return false;
+
+            return gridData.cells[x, y].height > 0;
+        }
+
+        /// <summary>
+        /// Counts the number of walkable neighbors (up, down, left, right) for a given grid cell.
+        /// </summary>
+        private int CountWalkableNeighbors(int x, int y)
+        {
+            int count = 0;
+
+            if (IsWalkable(x + 1, y)) count++;
+            if (IsWalkable(x - 1, y)) count++;
+            if (IsWalkable(x, y + 1)) count++;
+            if (IsWalkable(x, y - 1)) count++;
+
+            return count;
+        }
+
+        /// <summary>
+        /// A ROOM tile has 3 or 4 walkable neighbors.
+        /// </summary>
+        private bool IsRoom(int x, int y)
+        {
+            if (!IsWalkable(x, y)) return false;
+
+            int n = CountWalkableNeighbors(x, y);
+
+            return n >= 3;
+        }
+
+        /// <summary>
+        /// A CORRIDOR tile has exactly 1 or 2 walkable neighbors.
+        /// </summary>
+        private bool IsCorridor(int x, int y)
+        {
+            if (!IsWalkable(x, y)) return false;
+
+            int n = CountWalkableNeighbors(x, y);
+
+            return n == 1 || n == 2;
+        }
+    }
+}

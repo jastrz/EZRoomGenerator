@@ -1,12 +1,13 @@
 #if UNITY_EDITOR
 
+using EZRoomGen.Core;
 using UnityEditor;
 using UnityEngine;
 
-namespace EZRoomGen
+namespace EZRoomGen.Editor
 {
     [CustomEditor(typeof(RoomGenerator))]
-    public class RoomGeneratorEditor : Editor
+    public class RoomGeneratorEditor : UnityEditor.Editor
     {
         private const float cellSize = 30f;
         private const float gridPadding = 10f;
@@ -181,6 +182,7 @@ namespace EZRoomGen
                 }
             }
 
+#if USE_FBX_EXPORTER
             if (generator.GetRoomObject() != null)
             {
                 if (GUILayout.Button("Export as FBX", GUILayout.Height(30)))
@@ -192,6 +194,7 @@ namespace EZRoomGen
                     }
                 }
             }
+#endif
         }
 
         private void HandleCellSelection(RoomGenerator generator)

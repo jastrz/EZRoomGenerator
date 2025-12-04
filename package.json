@@ -1,0 +1,23 @@
+{
+  "name": "com.houkii.ezroomgenerator",
+  "version": "0.1.0",
+  "displayName": "EZ Room Gen",
+  "description": "A Unity editor and runtime tool for generating rooms procedurally using a customizable grid layout. Requires FBX Exporter (com.unity.formats.fbx).",
+  "unity": "6000.0",
+  "keywords": [
+    "procedural",
+    "generation",
+    "room",
+    "level",
+    "editor",
+    "fbx"
+  ],
+  "author": {
+    "name": "houkii",
+    "email": "jastrzebski.j.m@gmail.com",
+    "url": ""
+  },
+  "dependencies": {
+    "com.unity.formats.fbx": "5.1.5"
+  }
+}
