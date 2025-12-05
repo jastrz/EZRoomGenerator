@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 
 using EZRoomGen.Core;
+using EZRoomGen.Generation;
+using EZRoomGen.Generation.Editor;
 using UnityEditor;
 using UnityEngine;
 
@@ -13,6 +15,7 @@ namespace EZRoomGen.Editor
         private const float gridPadding = 10f;
         private bool isDragging = false;
         private Vector2 scrollPos;
+        private bool showGrid = true;
 
         private SerializedProperty gridWidthProp;
         private SerializedProperty gridHeightProp;
@@ -31,6 +34,13 @@ namespace EZRoomGen.Editor
         // private SerializedProperty generateOnStartProp;
         private SerializedProperty addCollidersProp;
         private SerializedProperty invertRoofProp;
+        private SerializedProperty generatorTypeProp;
+
+        private RoomCorridorLayoutGeneratorEditor roomCorridorGeneratorEditor = new();
+        private DungeonLayoutGeneratorEditor dungeonLayoutGeneratorEditor = new();
+        private RoomCorridorLayoutGeneratorSettings roomCorridorGeneratorSettings = new();
+        private DungeonLayoutGeneratorSettings dungeonLayoutGeneratorSettings = new();
+        private ILayoutGenerator layoutGenerator;
 
         private void OnEnable()
         {
@@ -51,6 +61,7 @@ namespace EZRoomGen.Editor
             // generateOnStartProp = serializedObject.FindProperty("generateOnStart");
             addCollidersProp = serializedObject.FindProperty("addColliders");
             invertRoofProp = serializedObject.FindProperty("invertRoof");
+            generatorTypeProp = serializedObject.FindProperty("generatorType");
         }
 
         public override void OnInspectorGUI()
@@ -72,8 +83,10 @@ namespace EZRoomGen.Editor
             HandleCellSelection(generator);
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Room Layout (Click to paint, Right-click to select)", EditorStyles.boldLabel);
-            DrawGrid(generator);
+            DrawLayoutGeneratorMenu(generator);
+
+            EditorGUILayout.Space();
+            HandleGrid(generator);
 
             EditorGUILayout.Space();
             DrawBottomMenu(generator);
@@ -85,6 +98,17 @@ namespace EZRoomGen.Editor
             if (realtimeGenerationProp.boolValue && (paramsChanged || materialsChanged || lightingParamsChanged))
             {
                 generator.GenerateRoom();
+            }
+        }
+
+        private void HandleGrid(RoomGenerator generator)
+        {
+            showGrid = EditorGUILayout.Toggle("Show Grid", showGrid);
+
+            if (showGrid)
+            {
+                EditorGUILayout.LabelField("Room Layout (Click to paint, Right-click to select)", EditorStyles.boldLabel);
+                DrawGrid(generator);
             }
         }
 
@@ -195,6 +219,37 @@ namespace EZRoomGen.Editor
                 }
             }
 #endif
+        }
+
+        private void DrawLayoutGeneratorMenu(RoomGenerator generator)
+        {
+            EditorGUILayout.PropertyField(generatorTypeProp);
+
+            var index = generatorTypeProp.enumValueIndex;
+            LayoutGeneratorType type = (LayoutGeneratorType)index;
+
+            bool shouldGenerate = false;
+
+            if (type == LayoutGeneratorType.RoomCorridor)
+            {
+                shouldGenerate = roomCorridorGeneratorEditor.DrawInspector(roomCorridorGeneratorSettings);
+                roomCorridorGeneratorSettings.height = defaultHeightProp.floatValue;
+                layoutGenerator = new RoomCorridorLayoutGenerator(roomCorridorGeneratorSettings);
+
+            }
+            else if (type == LayoutGeneratorType.Dungeon)
+            {
+                shouldGenerate = dungeonLayoutGeneratorEditor.DrawInspector(dungeonLayoutGeneratorSettings);
+                dungeonLayoutGeneratorSettings.height = defaultHeightProp.floatValue;
+                layoutGenerator = new DungeonLayoutGenerator(dungeonLayoutGeneratorSettings);
+            }
+
+            if (GUILayout.Button("Generate") || shouldGenerate)
+            {
+                float[,] layout = layoutGenerator.Generate(gridWidthProp.intValue, gridHeightProp.intValue);
+                generator.LoadGridFromArray(layout);
+                generator.GenerateRoom();
+            }
         }
 
         private void HandleCellSelection(RoomGenerator generator)
@@ -351,6 +406,5 @@ namespace EZRoomGen.Editor
         }
     }
 }
-
 
 #endif

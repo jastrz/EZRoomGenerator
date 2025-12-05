@@ -2,6 +2,8 @@ using UnityEngine;
 
 #if UNITY_EDITOR
 using UnityEditor;
+using EZRoomGen.Generation;
+
 #if USE_FBX_EXPORTER
 using UnityEditor.Formats.Fbx.Exporter;
 #endif
@@ -47,7 +49,9 @@ namespace EZRoomGen.Core
 
         [SerializeField][HideInInspector] private GridData gridData;
         [SerializeField][HideInInspector] private GameObject roomObject;
+        [SerializeField] private LayoutGeneratorType generatorType;
         private RoomMeshGenerator roomMeshGenerator;
+
 
         // Editor-only fields for grid interaction
         private int selectedX = -1;
