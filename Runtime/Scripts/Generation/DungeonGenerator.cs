@@ -153,11 +153,6 @@ namespace EZRoomGen.Generation
                 }
             }
 
-            // if (_settings.pathWidth > 1)
-            // {
-            //     grid = WidenPaths(grid, width, height);
-            // }
-
             return grid;
         }
 

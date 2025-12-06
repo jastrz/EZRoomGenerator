@@ -1,13 +1,15 @@
 #if UNITY_EDITOR
 
-using EZRoomGen.Core;
 using EZRoomGen.Generation;
 using EZRoomGen.Generation.Editor;
 using UnityEditor;
 using UnityEngine;
 
-namespace EZRoomGen.Editor
+namespace EZRoomGen.Core.Editor
 {
+    /// <summary>
+    /// Main editor class that handles room generation settings and displays layout grid.
+    /// </summary>
     [CustomEditor(typeof(RoomGenerator))]
     public class RoomGeneratorEditor : UnityEditor.Editor
     {
@@ -41,6 +43,7 @@ namespace EZRoomGen.Editor
         private RoomCorridorLayoutGeneratorSettings roomCorridorGeneratorSettings = new();
         private DungeonLayoutGeneratorSettings dungeonLayoutGeneratorSettings = new();
         private ILayoutGenerator layoutGenerator;
+        private RoomGenerator generator;
 
         private void OnEnable()
         {
@@ -68,28 +71,28 @@ namespace EZRoomGen.Editor
         {
             serializedObject.Update();
 
-            RoomGenerator generator = (RoomGenerator)target;
+            generator = (RoomGenerator)target;
             if (generator == null) return;
 
             scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
 
             ShowHeader();
-            DrawGridSettings(generator);
+            DrawGridSettings();
             bool paramsChanged = DrawParameters();
             bool materialsChanged = DrawMaterials();
             bool lightingParamsChanged = DrawLightPlacement();
 
             EditorGUILayout.Space();
-            HandleCellSelection(generator);
+            HandleCellSelection();
 
             EditorGUILayout.Space();
-            DrawLayoutGeneratorMenu(generator);
+            DrawLayoutGeneratorMenu();
 
             EditorGUILayout.Space();
-            HandleGrid(generator);
+            HandleGrid();
 
             EditorGUILayout.Space();
-            DrawBottomMenu(generator);
+            DrawBottomMenu();
 
             EditorGUILayout.EndScrollView();
 
@@ -101,24 +104,27 @@ namespace EZRoomGen.Editor
             }
         }
 
-        private void HandleGrid(RoomGenerator generator)
+        /// <summary>
+        /// Controls grid display.
+        /// </summary>
+        private void HandleGrid()
         {
             showGrid = EditorGUILayout.Toggle("Show Grid", showGrid);
 
             if (showGrid)
             {
-                EditorGUILayout.LabelField("Room Layout (Click to paint, Right-click to select)", EditorStyles.boldLabel);
+                // EditorGUILayout.LabelField("Room Layout (Click to paint, Right-click to select)", EditorStyles.boldLabel);
                 DrawGrid(generator);
             }
         }
 
         private void ShowHeader()
         {
-            EditorGUILayout.LabelField("Room Generator", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("EZRoom Generator", EditorStyles.boldLabel);
             EditorGUILayout.Space();
         }
 
-        private void DrawGridSettings(RoomGenerator generator)
+        private void DrawGridSettings()
         {
             EditorGUILayout.LabelField("Grid Settings", EditorStyles.boldLabel);
 
@@ -139,19 +145,20 @@ namespace EZRoomGen.Editor
             EditorGUILayout.Space();
         }
 
+        /// <summary>
+        /// Shows mesh generation settings.
+        /// </summary>
         private bool DrawParameters()
         {
-            EditorGUILayout.LabelField("Parameters", EditorStyles.boldLabel);
-
-            EditorGUILayout.PropertyField(realtimeGenerationProp);
-            // EditorGUILayout.PropertyField(generateOnStartProp);
-            EditorGUILayout.PropertyField(addCollidersProp);
+            EditorGUILayout.LabelField("Room/Mesh Generation", EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
             EditorGUILayout.Slider(defaultHeightProp, 1f, 10f, new GUIContent("Default Height"));
             EditorGUILayout.IntSlider(meshResolutionProp, 1, 12, new GUIContent("Mesh Resolution"));
             EditorGUILayout.Slider(uvScaleProp, 1f, 10f, new GUIContent("UV Scale"));
             EditorGUILayout.PropertyField(cellWindingProp);
+            EditorGUILayout.PropertyField(realtimeGenerationProp);
+            EditorGUILayout.PropertyField(addCollidersProp);
             EditorGUILayout.PropertyField(invertRoofProp);
             bool changed = EditorGUI.EndChangeCheck();
 
@@ -159,6 +166,9 @@ namespace EZRoomGen.Editor
             return changed;
         }
 
+        /// <summary>
+        /// Shows materials settings.
+        /// </summary>
         private bool DrawMaterials()
         {
             // EditorGUILayout.LabelField("Materials", EditorStyles.boldLabel);
@@ -173,6 +183,9 @@ namespace EZRoomGen.Editor
             return changed;
         }
 
+        /// <summary>
+        /// Displays options for procedural light placement.
+        /// </summary>
         private bool DrawLightPlacement()
         {
             // EditorGUILayout.LabelField("Light Placement", EditorStyles.boldLabel);
@@ -188,25 +201,31 @@ namespace EZRoomGen.Editor
             return changed;
         }
 
-        private void DrawBottomMenu(RoomGenerator generator)
+        /// <summary>
+        /// Draws menu with basic operations for generated room.
+        /// </summary>
+        private void DrawBottomMenu()
         {
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Clear Grid"))
+
+            // Clear Grid button
+            if (GUILayout.Button("Clear Grid", GUILayout.Height(30)))
             {
                 generator.ClearGrid();
                 if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
             }
-            EditorGUILayout.EndHorizontal();
 
+            // Generate Room button (only if not in realtime mode)
             if (!realtimeGenerationProp.boolValue)
             {
-                if (GUILayout.Button("Generate Room", GUILayout.Height(40)))
+                if (GUILayout.Button("Generate Room", GUILayout.Height(30)))
                 {
                     generator.GenerateRoom();
                 }
             }
 
 #if USE_FBX_EXPORTER
+            // Export as FBX button (only if room object exists)
             if (generator.GetRoomObject() != null)
             {
                 if (GUILayout.Button("Export as FBX", GUILayout.Height(30)))
@@ -219,10 +238,16 @@ namespace EZRoomGen.Editor
                 }
             }
 #endif
+
+            EditorGUILayout.EndHorizontal();
         }
 
-        private void DrawLayoutGeneratorMenu(RoomGenerator generator)
+        /// <summary>
+        /// Displays layout generation settings.
+        /// </summary>
+        private void DrawLayoutGeneratorMenu()
         {
+            EditorGUILayout.LabelField("Layout Generation", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(generatorTypeProp);
 
             var index = generatorTypeProp.enumValueIndex;
@@ -244,15 +269,34 @@ namespace EZRoomGen.Editor
                 layoutGenerator = new DungeonLayoutGenerator(dungeonLayoutGeneratorSettings);
             }
 
-            if (GUILayout.Button("Generate") || shouldGenerate)
+            if (realtimeGenerationProp.boolValue)
             {
-                float[,] layout = layoutGenerator.Generate(gridWidthProp.intValue, gridHeightProp.intValue);
-                generator.LoadGridFromArray(layout);
-                generator.GenerateRoom();
+                if (shouldGenerate)
+                {
+                    GenerateRoomFromLayout();
+                }
+            }
+            else
+            {
+                EditorGUILayout.Space();
+                if (GUILayout.Button("Generate Layout & Room", GUILayout.Height(30), GUILayout.Width(240)))
+                {
+                    GenerateRoomFromLayout();
+                }
             }
         }
 
-        private void HandleCellSelection(RoomGenerator generator)
+        private void GenerateRoomFromLayout()
+        {
+            float[,] layout = layoutGenerator.Generate(gridWidthProp.intValue, gridHeightProp.intValue);
+            generator.LoadGridFromArray(layout);
+            generator.GenerateRoom();
+        }
+
+        /// <summary>
+        /// Handles setting height and walls configuration for selected cell.
+        /// </summary>
+        private void HandleCellSelection()
         {
             // Selected cell info
             int selectedX = (int)typeof(RoomGenerator).GetField("selectedX",
@@ -305,6 +349,9 @@ namespace EZRoomGen.Editor
             }
         }
 
+        /// <summary>
+        /// Displays grid layout and handles its input.
+        /// </summary>
         private void DrawGrid(RoomGenerator generator)
         {
             int gridWidth = (int)typeof(RoomGenerator).GetField("gridWidth",
@@ -340,6 +387,7 @@ namespace EZRoomGen.Editor
 
                     bool isHovering = cellRect.Contains(e.mousePosition);
 
+                    // Left mouse: paint
                     if (isHovering && e.type == EventType.MouseDown && e.button == 0)
                     {
                         isDragging = true;
@@ -348,6 +396,7 @@ namespace EZRoomGen.Editor
                         e.Use();
                         Repaint();
                     }
+                    // Right mouse: select
                     else if (isHovering && e.type == EventType.MouseDown && e.button == 1)
                     {
                         selectedXField.SetValue(generator, x);
@@ -355,11 +404,25 @@ namespace EZRoomGen.Editor
                         e.Use();
                         Repaint();
                     }
+                    // Left mouse drag: paint
                     else if (isHovering && e.type == EventType.MouseDrag && isDragging && e.button == 0)
                     {
                         if (generator.GetCellHeight(x, y) <= 0)
                         {
                             generator.SetCellHeight(x, y, defaultHeightProp.floatValue);
+                            if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
+                            Repaint();
+                        }
+                        e.Use();
+                    }
+                    // MIDDLE mouse down or drag: ERASE
+                    else if (isHovering &&
+                        ((e.type == EventType.MouseDown && e.button == 2) ||
+                         (e.type == EventType.MouseDrag && e.button == 2)))
+                    {
+                        if (generator.GetCellHeight(x, y) > 0)
+                        {
+                            generator.SetCellHeight(x, y, 0f);  // Set inactive
                             if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
                             Repaint();
                         }
@@ -402,7 +465,7 @@ namespace EZRoomGen.Editor
                 isDragging = false;
             }
 
-            EditorGUILayout.HelpBox("Left-click and drag to paint cells. Right-click to select cell and adjust height.", MessageType.Info);
+            EditorGUILayout.HelpBox("Left-click and drag to paint cells. Right-click to select cell. Middle-click and drag to erase cells.", MessageType.Info);
         }
     }
 }

@@ -5,6 +5,9 @@ using UnityEngine;
 
 namespace EZRoomGen.Generation.Editor
 {
+    /// <summary>
+    /// Editor utility class used to display Dungeon layout generator settings.
+    /// </summary>
     public class DungeonLayoutGeneratorEditor : IGeneratorEditor<DungeonLayoutGeneratorSettings>
     {
         public bool DrawInspector(DungeonLayoutGeneratorSettings settings)
@@ -16,7 +19,6 @@ namespace EZRoomGen.Generation.Editor
                 settings.useRecursiveBacktracker);
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Generation Settings", EditorStyles.boldLabel);
 
             settings.seed = EditorGUILayout.IntField(
                 new GUIContent("Seed", "Random seed"),

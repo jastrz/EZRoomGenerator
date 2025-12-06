@@ -19,9 +19,6 @@ namespace EZRoomGen.Core
         private Material roofMaterial;
         private bool invertRoof;
 
-        // Slight lift to prevent clipping
-        private float roofOffset = 0.0f;
-
         /// <summary>
         /// Initializes a new instance of the RoomMeshGenerator class.
         /// </summary>
@@ -181,8 +178,7 @@ namespace EZRoomGen.Core
 
         /// <summary>
         /// Creates an inverted roof that covers empty (height == 0) cells instead of room cells.
-        /// Useful for creating exterior environments or sky-blocking geometry.
-        /// The roof is placed at the maximum height found in the grid plus a small offset.
+        /// The roof is placed at the maximum height found in the grid.
         /// </summary>
         /// <param name="verts">List to append roof vertex positions to.</param>
         /// <param name="tris">List to append roof triangle indices to.</param>
@@ -201,7 +197,7 @@ namespace EZRoomGen.Core
                 }
             }
 
-            float roofHeight = maxHeight + roofOffset;
+            float roofHeight = maxHeight;
 
             // Generate roof only on cells that have height == 0
             for (int y = 0; y < gridData.gridHeight; y++)
