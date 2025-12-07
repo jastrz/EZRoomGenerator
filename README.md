@@ -13,6 +13,17 @@ EZRoomGen lets you generate and edit rooms, dungeons, and mazes using an interac
 
 - **Realtime Editing** – Modify generated grid layouts or just draw them from scratch.
 
+## Samples
+
+Dungeon
+![Dungeon](https://i.imgur.com/y70jZhA.gif)
+
+Rooms and Corridors
+![Rooms and Corridors](https://i.imgur.com/RuKg3AB.gif)
+
+First Person View
+![FPP](https://imgur.com/tD8SwYV.png)
+
 ## Installation
 
 1. Clone the repository into your Unity project's `Assets` folder.
@@ -28,6 +39,7 @@ To enable FBX export functionality:
 ## Notes
 
 - Generates Wall, Floor and Roof as separate meshes. 
+- Contains simple FPP Controller (Player prefab) with a flashlight, of course.
 - Standalone PlayMode support has not been tested yet.
 
 ---
