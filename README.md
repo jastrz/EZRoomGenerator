@@ -16,11 +16,14 @@ EZRoomGen lets you generate and edit rooms, dungeons, and mazes using an interac
 
 ## Samples
 
-![Dungeon](https://i.imgur.com/y70jZhA.gif) Dungeon
+![Dungeon](https://i.imgur.com/y70jZhA.gif)
+Dungeon
 
-![Rooms and Corridors](https://i.imgur.com/RuKg3AB.gif) Rooms and Corridors
+![Rooms and Corridors](https://i.imgur.com/RuKg3AB.gif)
+Rooms and Corridors
 
-![FPP](https://imgur.com/tD8SwYV.png) Custom Room
+![FPP](https://imgur.com/tD8SwYV.png)
+Custom Room
 
 ## Installation
 
@@ -39,6 +42,7 @@ To enable FBX export functionality:
 - Generates Wall, Floor and Roof as separate meshes.
 - Works with all pipelines, although sample materials are for URP, so some adjustments might be needed for them to work.
 - Contains simple FPP Controller (Player prefab) with a flashlight, of course.
+- Rooms can be joined manually by adding passages to form a larger structure.
 - Standalone PlayMode support has not been tested yet.
 
 ---
