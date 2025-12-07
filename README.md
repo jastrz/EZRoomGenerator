@@ -16,14 +16,17 @@ EZRoomGen lets you generate and edit rooms, dungeons, and mazes using an interac
 
 ## Samples
 
-![Dungeon](https://i.imgur.com/y70jZhA.gif)
 Dungeon
 
-![Rooms and Corridors](https://i.imgur.com/RuKg3AB.gif)
+![Dungeon](https://i.imgur.com/y70jZhA.gif)
+
 Rooms and Corridors
 
-![FPP](https://imgur.com/tD8SwYV.png)
+![Rooms and Corridors](https://i.imgur.com/RuKg3AB.gif)
+
 Custom Room
+
+![FPP](https://imgur.com/tD8SwYV.png)
 
 ## Installation
 
