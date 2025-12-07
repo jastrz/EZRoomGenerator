@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 namespace EZRoomGen.Core
@@ -80,7 +81,7 @@ namespace EZRoomGen.Core
 
                     GameObject lightObject;
 
-                    if (lightPlacementMode == LightPlaceMode.Prefab)
+                    if (lightPlacementMode == LightPlaceMode.Prefab && lampPrefab != null)
                     {
                         lightObject = CreateLampPrefab(lampPrefab, parent, lightPos);
                     }
@@ -109,7 +110,14 @@ namespace EZRoomGen.Core
 
         private GameObject CreateLampPrefab(GameObject lampPrefab, GameObject parent, Vector3 lightPos)
         {
+#if UNITY_EDITOR
+            GameObject instance = PrefabUtility.InstantiatePrefab(lampPrefab, parent.transform) as GameObject;
+            instance.transform.position = lightPos;
+            instance.transform.rotation = Quaternion.Euler(90, 90, 0);
+            return instance;
+#else
             return GameObject.Instantiate(lampPrefab, lightPos, Quaternion.Euler(90, 90, 0), parent.transform);
+#endif
         }
 
         /// <summary>

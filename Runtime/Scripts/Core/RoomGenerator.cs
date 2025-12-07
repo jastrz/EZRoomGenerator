@@ -205,7 +205,7 @@ namespace EZRoomGen.Core
                 AddCollidersToRoom(roomObject);
             }
 
-            if (automaticallyAddLights && roomObject != null && lampPrefab != null)
+            if (automaticallyAddLights && roomObject != null)
             {
                 var lightsPlacer = new LightsPlacer(gridData);
                 lightsPlacer.AddCeilingLights(roomObject, lampPrefab, roomSpacing, corridorSpacing);
