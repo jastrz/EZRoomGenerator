@@ -1,0 +1,19 @@
+{
+    "name": "EZRoomGen.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:dec7c6602b9d75241ab52a66bfb8be60",
+        "GUID:0f9e8f73c69964f1e8176f9a0b86f9b2"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

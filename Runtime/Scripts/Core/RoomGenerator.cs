@@ -1,14 +1,5 @@
-using UnityEngine;
-
-#if UNITY_EDITOR
-using UnityEditor;
 using EZRoomGen.Generation;
-
-#if USE_FBX_EXPORTER
-using UnityEditor.Formats.Fbx.Exporter;
-#endif
-using System.IO;
-#endif
+using UnityEngine;
 
 namespace EZRoomGen.Core
 {
@@ -20,6 +11,8 @@ namespace EZRoomGen.Core
     [ExecuteAlways]
     public class RoomGenerator : MonoBehaviour
     {
+        public GameObject RoomObject => roomObject;
+
         [Header("Grid Settings")]
         [SerializeField] private int gridWidth = 10;
         [SerializeField] private int gridHeight = 10;
@@ -456,46 +449,6 @@ namespace EZRoomGen.Core
         {
             ClearRoom();
         }
-
-#if UNITY_EDITOR && USE_FBX_EXPORTER
-        /// <summary>
-        /// Exports the currently generated room as an FBX file.
-        /// Only available in the Unity Editor. Creates the directory if it doesn't exist.
-        /// </summary>
-        /// <param name="path">Full file path for the exported FBX file (including .fbx extension).</param>
-        public void ExportRoomAsFBX(string path)
-        {
-            if (roomObject == null)
-            {
-                Debug.LogWarning("EZ Room Gen: No generated room to export.");
-                return;
-            }
-
-            try
-            {
-                string directory = Path.GetDirectoryName(path);
-                if (!Directory.Exists(directory))
-                    Directory.CreateDirectory(directory);
-
-                ModelExporter.ExportObject(path, roomObject);
-
-                if (path.StartsWith(Application.dataPath))
-                {
-                    string relativePath = "Assets" + path.Substring(Application.dataPath.Length);
-                    AssetDatabase.Refresh();
-                    Debug.Log($"EZ Room Gen: ✅ Room successfully exported to: {relativePath}");
-                }
-                else
-                {
-                    Debug.Log($"EZ Room Gen: ✅ Room successfully exported to: {path}");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"EZ Room Gen: ❌ FBX Export failed: {ex.Message}");
-            }
-        }
-#endif
     }
 }
 
