@@ -7,7 +7,11 @@ namespace EZRoomGen.Core
     {
         public const int MinRoomWidth = 4;
         public const int MinRoomHeight = 4;
-        public const int MaxRoomWidth = 50;
-        public const int MaxRoomHeight = 50;
+        public const int MaxRoomWidth = 100;
+        public const int MaxRoomHeight = 100;
+
+        public const string WallsMeshName = "Walls";
+        public const string FloorMeshName = "Floor";
+        public const string RoofMeshName = "Roof";
     }
 }

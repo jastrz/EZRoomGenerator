@@ -136,8 +136,8 @@ namespace EZRoomGen.Core
         /// </summary>
         public void ResizeGrid(int newWidth, int newHeight)
         {
-            gridWidth = Mathf.Clamp(newWidth, 2, 50);
-            gridHeight = Mathf.Clamp(newHeight, 2, 50);
+            gridWidth = Mathf.Clamp(newWidth, Constants.MinRoomWidth, Constants.MaxRoomWidth);
+            gridHeight = Mathf.Clamp(newHeight, Constants.MinRoomHeight, Constants.MaxRoomHeight);
 
             if (gridData == null)
             {

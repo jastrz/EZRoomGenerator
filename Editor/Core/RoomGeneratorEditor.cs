@@ -18,11 +18,8 @@ namespace EZRoomGen.Core.Editor
     [CustomEditor(typeof(RoomGenerator))]
     public class RoomGeneratorEditor : UnityEditor.Editor
     {
-        private const float cellSize = 30f;
-        private const float gridPadding = 10f;
-        private bool isDragging = false;
         private Vector2 scrollPos;
-        private bool showGrid = true;
+        private static bool showGrid = false;
 
         private SerializedProperty gridWidthProp;
         private SerializedProperty gridHeightProp;
@@ -49,6 +46,7 @@ namespace EZRoomGen.Core.Editor
         private RoomCorridorLayoutGeneratorSettings roomCorridorGeneratorSettings = new();
         private DungeonLayoutGeneratorSettings dungeonLayoutGeneratorSettings = new();
         private MazeLayoutLayoutGeneratorSettings mazeLayoutLayoutGeneratorSettings = new();
+        private RoomGridDrawer gridDrawer = new();
         private ILayoutGenerator layoutGenerator;
         private RoomGenerator generator;
 
@@ -90,9 +88,6 @@ namespace EZRoomGen.Core.Editor
             bool lightingParamsChanged = DrawLightPlacement();
 
             EditorGUILayout.Space();
-            HandleCellSelection();
-
-            EditorGUILayout.Space();
             DrawLayoutGeneratorMenu();
 
             EditorGUILayout.Space();
@@ -116,18 +111,23 @@ namespace EZRoomGen.Core.Editor
         /// </summary>
         private void HandleGrid()
         {
+            EditorGUILayout.BeginHorizontal();
             showGrid = EditorGUILayout.Toggle("Show Grid", showGrid);
+            if (GUILayout.Button("Open Grid Window", GUILayout.Width(140)))
+            {
+                RoomGridEditorWindow.OpenWindow(generator);
+            }
+            EditorGUILayout.EndHorizontal();
 
             if (showGrid)
             {
-                // EditorGUILayout.LabelField("Room Layout (Click to paint, Right-click to select)", EditorStyles.boldLabel);
-                DrawGrid(generator);
+                gridDrawer.Draw(generator);
             }
         }
 
         private void ShowHeader()
         {
-            EditorGUILayout.LabelField("EZRoom Generator", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("EZ Room Generator", EditorStyles.boldLabel);
             EditorGUILayout.Space();
         }
 
@@ -243,6 +243,20 @@ namespace EZRoomGen.Core.Editor
                         ExportRoomAsFBX(path);
                     }
                 }
+
+                if (GUILayout.Button("Export as Prefab", GUILayout.Height(30)))
+                {
+                    string fbxPath = EditorUtility.SaveFilePanel("Export Room FBX", "Assets", "GeneratedRoom.fbx", "fbx");
+                    if (!string.IsNullOrEmpty(fbxPath))
+                    {
+                        string defaultPrefabName = Path.GetFileNameWithoutExtension(fbxPath) + ".prefab";
+                        string prefabPath = EditorUtility.SaveFilePanelInProject("Save Room Prefab", defaultPrefabName, "prefab", "Choose location for the room prefab");
+                        if (!string.IsNullOrEmpty(prefabPath))
+                        {
+                            ExportRoomAsPrefab(fbxPath, prefabPath);
+                        }
+                    }
+                }
             }
 #endif
 
@@ -305,263 +319,9 @@ namespace EZRoomGen.Core.Editor
             generator.GenerateRoom();
         }
 
-        /// <summary>
-        /// Handles setting height and walls configuration for selected cell.
-        /// </summary>
-        private void HandleCellSelection()
-        {
-            // Selected cell info
-            int selectedX = (int)typeof(RoomGenerator).GetField("selectedX",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(generator);
-            int selectedY = (int)typeof(RoomGenerator).GetField("selectedY",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(generator);
-
-            if (selectedX >= 0 && selectedY >= 0)
-            {
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField($"Selected Cell: ({selectedX}, {selectedY})", EditorStyles.boldLabel);
-
-                EditorGUI.BeginChangeCheck();
-                float currentHeight = generator.GetCellHeight(selectedX, selectedY);
-                float newHeight = EditorGUILayout.Slider("Cell Height", currentHeight, 0f, 5f);
-
-                if (EditorGUI.EndChangeCheck())
-                {
-                    generator.SetCellHeight(selectedX, selectedY, newHeight);
-                    if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
-                }
-
-                // Wall toggles - only show if cell has height
-                if (generator.GetCellHeight(selectedX, selectedY) > 0)
-                {
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Walls", EditorStyles.boldLabel);
-
-                    EditorGUI.BeginChangeCheck();
-
-                    bool leftWall = generator.GetCellWall(selectedX, selectedY, WallSide.Left);
-                    bool rightWall = generator.GetCellWall(selectedX, selectedY, WallSide.Right);
-                    bool backWall = generator.GetCellWall(selectedX, selectedY, WallSide.Back);
-                    bool frontWall = generator.GetCellWall(selectedX, selectedY, WallSide.Front);
-
-                    leftWall = EditorGUILayout.Toggle("Left Wall (West)", leftWall);
-                    rightWall = EditorGUILayout.Toggle("Right Wall (East)", rightWall);
-                    backWall = EditorGUILayout.Toggle("Back Wall (South)", backWall);
-                    frontWall = EditorGUILayout.Toggle("Front Wall (North)", frontWall);
-
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        generator.SetCellWall(selectedX, selectedY, WallSide.Left, leftWall);
-                        generator.SetCellWall(selectedX, selectedY, WallSide.Right, rightWall);
-                        generator.SetCellWall(selectedX, selectedY, WallSide.Back, backWall);
-                        generator.SetCellWall(selectedX, selectedY, WallSide.Front, frontWall);
-
-                        if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Displays grid layout and handles its input.
-        /// </summary>
-        private void DrawGrid(RoomGenerator generator)
-        {
-            var gridDimensions = GetGridDimensions(generator);
-            var selectedCell = GetSelectedCell(generator);
-
-            Rect gridRect = GUILayoutUtility.GetRect(
-                cellSize * gridDimensions.width + gridPadding * 2,
-                cellSize * gridDimensions.height + gridPadding * 2
-            );
-
-            Event e = Event.current;
-
-            // Draw each cell in the grid
-            for (int y = 0; y < gridDimensions.height; y++)
-            {
-                for (int x = 0; x < gridDimensions.width; x++)
-                {
-                    Rect cellRect = CalculateCellRect(gridRect, x, y, gridDimensions.height);
-
-                    HandleCellInput(generator, x, y, cellRect, e, ref selectedCell);
-
-                    bool isActive = generator.GetCellHeight(x, y) > 0;
-                    bool isSelected = (x == selectedCell.x && y == selectedCell.y);
-
-                    DrawCell(generator, cellRect, x, y, isActive, isSelected);
-                }
-            }
-
-            // Reset dragging state when mouse button is released
-            if (e.type == EventType.MouseUp && e.button == 0)
-            {
-                isDragging = false;
-            }
-
-            EditorGUILayout.HelpBox("Left-click and drag to paint cells. Right-click to select cell. Middle-click and drag to erase cells.", MessageType.Info);
-        }
-
-        /// <summary>
-        /// Retrieves the grid dimensions from the RoomGenerator .
-        /// </summary>
-        private (int width, int height) GetGridDimensions(RoomGenerator generator)
-        {
-            int width = (int)typeof(RoomGenerator).GetField("gridWidth",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(generator);
-            int height = (int)typeof(RoomGenerator).GetField("gridHeight",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(generator);
-
-            return (width, height);
-        }
-
-        /// <summary>
-        /// Retrieves the currently selected cell coordinates from the RoomGenerator.
-        /// </summary>
-        private (int x, int y) GetSelectedCell(RoomGenerator generator)
-        {
-            var selectedXField = typeof(RoomGenerator).GetField("selectedX",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var selectedYField = typeof(RoomGenerator).GetField("selectedY",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            int x = (int)selectedXField.GetValue(generator);
-            int y = (int)selectedYField.GetValue(generator);
-
-            return (x, y);
-        }
-
-        /// <summary>
-        /// Sets the selected cell coordinates in the RoomGenerator using reflection.
-        /// </summary>
-        private void SetSelectedCell(RoomGenerator generator, int x, int y)
-        {
-            var selectedXField = typeof(RoomGenerator).GetField("selectedX",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var selectedYField = typeof(RoomGenerator).GetField("selectedY",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            selectedXField.SetValue(generator, x);
-            selectedYField.SetValue(generator, y);
-        }
-
-        /// <summary>
-        /// Calculates the screen-space rectangle for a grid cell.
-        /// Y-axis is inverted so that (0,0) is at the bottom-left.
-        /// </summary>
-        private Rect CalculateCellRect(Rect gridRect, int x, int y, int gridHeight)
-        {
-            return new Rect(
-                gridRect.x + gridPadding + x * cellSize,
-                gridRect.y + gridPadding + (gridHeight - 1 - y) * cellSize,
-                cellSize - 2,
-                cellSize - 2
-            );
-        }
-
-        /// <summary>
-        /// Handles mouse input for a cell: painting, selecting, and erasing.
-        /// - Left click/drag: Toggle or paint cells
-        /// - Right click: Select cell
-        /// - Middle click/drag: Erase cells
-        /// </summary>
-        private void HandleCellInput(RoomGenerator generator, int x, int y, Rect cellRect, Event e, ref (int x, int y) selectedCell)
-        {
-            bool isHovering = cellRect.Contains(e.mousePosition);
-            if (!isHovering) return;
-
-            // Left mouse: paint (toggle cell on initial click)
-            if (e.type == EventType.MouseDown && e.button == 0)
-            {
-                isDragging = true;
-                generator.ToggleCell(x, y);
-                if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
-                e.Use();
-                Repaint();
-            }
-            // Right mouse: select cell for editing
-            else if (e.type == EventType.MouseDown && e.button == 1)
-            {
-                SetSelectedCell(generator, x, y);
-                selectedCell = (x, y);
-                e.Use();
-                Repaint();
-            }
-            // Left mouse drag: paint only inactive cells
-            else if (e.type == EventType.MouseDrag && isDragging && e.button == 0)
-            {
-                if (generator.GetCellHeight(x, y) <= 0)
-                {
-                    generator.SetCellHeight(x, y, defaultHeightProp.floatValue);
-                    if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
-                    Repaint();
-                }
-                e.Use();
-            }
-            // Middle mouse: erase cells (set height to 0)
-            else if ((e.type == EventType.MouseDown && e.button == 2) ||
-                     (e.type == EventType.MouseDrag && e.button == 2))
-            {
-                if (generator.GetCellHeight(x, y) > 0)
-                {
-                    generator.SetCellHeight(x, y, 0f);
-                    if (realtimeGenerationProp.boolValue) generator.GenerateRoom();
-                    Repaint();
-                }
-                e.Use();
-            }
-        }
-
-        /// <summary>
-        /// Renders a single grid cell with its color, outline, and height label.
-        /// </summary>
-        private void DrawCell(RoomGenerator generator, Rect cellRect, int x, int y, bool isActive, bool isSelected)
-        {
-            Color cellColor = GetCellColor(generator, x, y, isActive, isSelected);
-
-            // Draw cell background and outline
-            EditorGUI.DrawRect(cellRect, cellColor);
-            Handles.DrawSolidRectangleWithOutline(cellRect, Color.clear, new Color(0.3f, 0.3f, 0.3f));
-
-            // Draw height value label on active cells
-            if (isActive)
-            {
-                GUIStyle style = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 10
-                };
-                style.normal.textColor = Color.white;
-
-                GUI.Label(cellRect, generator.GetCellHeight(x, y).ToString("F1"), style);
-            }
-        }
-
-        /// <summary>
-        /// Determines the color of a cell based on its state.
-        /// </summary>
-        private Color GetCellColor(RoomGenerator generator, int x, int y, bool isActive, bool isSelected)
-        {
-            if (isSelected && isActive)
-                return new Color(1f, 0.8f, 0.2f); // Bright orange
-
-            if (isSelected)
-                return new Color(0.8f, 0.5f, 0.1f); // Dark orange
-
-            if (isActive)
-            {
-                // Gradient from blue (low height) to green (high height)
-                float heightRatio = generator.GetCellHeight(x, y) / 5f;
-                return Color.Lerp(new Color(0.2f, 0.4f, 1f), new Color(0.2f, 1f, 0.4f), heightRatio);
-            }
-
-            return new Color(0.2f, 0.2f, 0.2f); // Dark gray (inactive)
-        }
-
 #if USE_FBX_EXPORTER
         /// <summary>
-        /// Exports the currently generated room as an FBX file.
-        /// Only available in the Unity Editor. Creates the directory if it doesn't exist.
+        /// Exports only the Wall, Floor, and Roof meshes from the currently generated room as an FBX file.
         /// </summary>
         /// <param name="path">Full file path for the exported FBX file (including .fbx extension).</param>
         public void ExportRoomAsFBX(string path)
@@ -578,22 +338,228 @@ namespace EZRoomGen.Core.Editor
                 if (!Directory.Exists(directory))
                     Directory.CreateDirectory(directory);
 
-                ModelExporter.ExportObject(path, generator.RoomObject);
+                // Create a temporary container to hold only Wall, Floor, and Roof objects
+                GameObject tempContainer = new GameObject("TempExport");
 
+                // Store original materials for later reassignment
+                System.Collections.Generic.Dictionary<string, Material> originalMaterials = new System.Collections.Generic.Dictionary<string, Material>();
+
+                // Find and copy only Wall, Floor, and Roof objects
+                Transform[] children = generator.RoomObject.GetComponentsInChildren<Transform>(true);
+                foreach (Transform child in children)
+                {
+                    if (child == generator.RoomObject.transform) continue;
+
+                    string childName = child.gameObject.name;
+                    if (childName == Constants.WallsMeshName || childName == Constants.FloorMeshName || childName == Constants.RoofMeshName)
+                    {
+                        // Store the original material
+                        MeshRenderer originalRenderer = child.GetComponent<MeshRenderer>();
+                        if (originalRenderer != null && originalRenderer.sharedMaterial != null)
+                        {
+                            originalMaterials[childName] = originalRenderer.sharedMaterial;
+                        }
+
+                        GameObject copy = Object.Instantiate(child.gameObject, tempContainer.transform);
+                        copy.name = child.gameObject.name;
+                        copy.transform.localPosition = child.localPosition;
+                        copy.transform.localRotation = child.localRotation;
+                        copy.transform.localScale = child.localScale;
+
+                        // Remove the MeshRenderer component to avoid exporting materials
+                        MeshRenderer renderer = copy.GetComponent<MeshRenderer>();
+                        if (renderer != null)
+                        {
+                            Object.DestroyImmediate(renderer);
+                        }
+                    }
+                }
+
+                ExportModelOptions exportModelOptions = new ExportModelOptions();
+                exportModelOptions.ExportFormat = ExportFormat.Binary;
+                exportModelOptions.KeepInstances = true;
+
+                ModelExporter.ExportObject(path, tempContainer, exportModelOptions);
+
+                // Clean up temporary object
+                Object.DestroyImmediate(tempContainer);
+
+                string relativePath = null;
                 if (path.StartsWith(Application.dataPath))
                 {
-                    string relativePath = "Assets" + path.Substring(Application.dataPath.Length);
+                    relativePath = "Assets" + path.Substring(Application.dataPath.Length);
                     AssetDatabase.Refresh();
-                    Debug.Log($"EZ Room Gen: ✅ Room successfully exported to: {relativePath}");
+
+                    // Wait for import to complete and reassign materials
+                    GameObject importedFBX = AssetDatabase.LoadAssetAtPath<GameObject>(relativePath);
+                    if (importedFBX != null)
+                    {
+                        // Get the model importer
+                        ModelImporter importer = AssetImporter.GetAtPath(relativePath) as ModelImporter;
+                        if (importer != null)
+                        {
+                            importer.materialImportMode = ModelImporterMaterialImportMode.None;
+                            AssetDatabase.WriteImportSettingsIfDirty(relativePath);
+                            AssetDatabase.ImportAsset(relativePath, ImportAssetOptions.ForceUpdate);
+                        }
+
+                        // Reassign original materials to the imported FBX
+                        Transform[] fbxChildren = importedFBX.GetComponentsInChildren<Transform>(true);
+                        foreach (Transform fbxChild in fbxChildren)
+                        {
+                            if (originalMaterials.ContainsKey(fbxChild.name))
+                            {
+                                MeshRenderer renderer = fbxChild.GetComponent<MeshRenderer>();
+                                if (renderer != null)
+                                {
+                                    renderer.sharedMaterial = originalMaterials[fbxChild.name];
+                                }
+                            }
+                        }
+
+                        EditorUtility.SetDirty(importedFBX);
+                        AssetDatabase.SaveAssets();
+                    }
+
+                    Debug.Log($"EZ Room Gen: ✅ Room meshes (Wall, Floor, Roof) successfully exported to: {relativePath}");
                 }
                 else
                 {
-                    Debug.Log($"EZ Room Gen: ✅ Room successfully exported to: {path}");
+                    Debug.Log($"EZ Room Gen: ✅ Room meshes (Wall, Floor, Roof) successfully exported to: {path}");
                 }
             }
             catch (System.Exception ex)
             {
                 Debug.LogError($"EZ Room Gen: ❌ FBX Export failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Exports the room as FBX (Wall, Floor, Roof meshes) and creates a prefab that includes the FBX and all prefab instances from the hierarchy.
+        /// </summary>
+        /// <param name="fbxPath">Full file path for the exported FBX file (including .fbx extension).</param>
+        /// <param name="prefabPath">Relative path within Assets folder for the prefab (including .prefab extension).</param>
+        public void ExportRoomAsPrefab(string fbxPath, string prefabPath)
+        {
+            if (generator.RoomObject == null)
+            {
+                Debug.LogWarning("EZ Room Gen: No generated room to export.");
+                return;
+            }
+
+            try
+            {
+                // Export FBX with Wall, Floor, and Roof meshes
+                ExportRoomAsFBX(fbxPath);
+
+                // Convert FBX path to relative Asset path
+                string fbxRelativePath;
+                if (fbxPath.StartsWith(Application.dataPath))
+                {
+                    fbxRelativePath = "Assets" + fbxPath.Substring(Application.dataPath.Length);
+                }
+                else
+                {
+                    Debug.LogError("EZ Room Gen: FBX must be saved inside the Assets folder for prefab creation.");
+                    return;
+                }
+
+                // Refresh to ensure FBX is imported
+                AssetDatabase.Refresh();
+
+                // Create a new GameObject to hold the complete room
+                GameObject prefabRoot = new GameObject(Path.GetFileNameWithoutExtension(prefabPath));
+
+                //Add the FBX model as a child
+                GameObject fbxModel = AssetDatabase.LoadAssetAtPath<GameObject>(fbxRelativePath);
+                if (fbxModel != null)
+                {
+                    GameObject fbxInstance = (GameObject)PrefabUtility.InstantiatePrefab(fbxModel, prefabRoot.transform);
+                    fbxInstance.name = "RoomMeshes";
+                }
+
+                // Copy all prefab instances from the original hierarchy
+                Transform[] children = generator.RoomObject.GetComponentsInChildren<Transform>(true);
+                foreach (Transform child in children)
+                {
+                    if (child == generator.RoomObject.transform) continue;
+
+                    string childName = child.gameObject.name;
+
+                    // Skip Wall, Floor, and Roof since they're in the FBX
+                    if (childName == Constants.WallsMeshName || childName == Constants.FloorMeshName || childName == Constants.RoofMeshName)
+                        continue;
+
+                    // Check if this object is a prefab instance
+                    if (PrefabUtility.IsPartOfPrefabInstance(child.gameObject))
+                    {
+                        // Get the outermost prefab instance (in case of nested prefabs)
+                        GameObject prefabInstanceRoot = PrefabUtility.GetOutermostPrefabInstanceRoot(child.gameObject);
+
+                        // Only process if this is the root of the prefab instance (not a child of another prefab)
+                        if (prefabInstanceRoot == child.gameObject)
+                        {
+                            // Get the source prefab asset
+                            GameObject sourcePrefab = PrefabUtility.GetCorrespondingObjectFromSource(child.gameObject);
+
+                            if (sourcePrefab != null)
+                            {
+                                // Instantiate the prefab in the new hierarchy
+                                GameObject prefabInstance = (GameObject)PrefabUtility.InstantiatePrefab(sourcePrefab, prefabRoot.transform);
+                                prefabInstance.name = child.gameObject.name;
+                                prefabInstance.transform.localPosition = child.localPosition;
+                                prefabInstance.transform.localRotation = child.localRotation;
+                                prefabInstance.transform.localScale = child.localScale;
+
+                                // Copy any property overrides from the original instance
+                                PrefabUtility.ApplyPrefabInstance(child.gameObject, InteractionMode.AutomatedAction);
+                            }
+                        }
+                    }
+                }
+
+                // Ensure prefab directory exists
+                string prefabDirectory = Path.GetDirectoryName(prefabPath);
+                if (!string.IsNullOrEmpty(prefabDirectory) && !AssetDatabase.IsValidFolder(prefabDirectory))
+                {
+                    string[] folders = prefabDirectory.Split('/');
+                    string currentPath = "";
+                    for (int i = 0; i < folders.Length; i++)
+                    {
+                        if (i == 0)
+                        {
+                            currentPath = folders[i];
+                            continue;
+                        }
+                        string parentPath = currentPath;
+                        currentPath += "/" + folders[i];
+                        if (!AssetDatabase.IsValidFolder(currentPath))
+                        {
+                            AssetDatabase.CreateFolder(parentPath, folders[i]);
+                        }
+                    }
+                }
+
+                // Create the prefab
+                GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
+
+                // Clean up the temporary object
+                Object.DestroyImmediate(prefabRoot);
+
+                if (savedPrefab != null)
+                {
+                    AssetDatabase.Refresh();
+                    Debug.Log($"EZ Room Gen: ✅ Complete room prefab created at: {prefabPath}");
+                    EditorGUIUtility.PingObject(savedPrefab);
+                }
+                else
+                {
+                    Debug.LogError("EZ Room Gen: ❌ Failed to create prefab.");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"EZ Room Gen: ❌ Prefab creation failed: {ex.Message}\n{ex.StackTrace}");
             }
         }
 #endif
