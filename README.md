@@ -2,7 +2,7 @@
 
 **Editor-friendly, Lightweight, Grid-Based Procedural Room & Dungeon Generator for Unity**
 
-EZRoomGen lets you generate and edit rooms, dungeons, and mazes using an interactive grid. It automatically generates floor, wall, and roof meshes, adds colliders, and places lights.
+EZRoomGen lets you generate and edit simple levels - rooms, dungeons, and mazes using an interactive grid. It automatically generates floor, wall, and roof meshes, adds colliders, and places lights.
 
 ## Features
 
@@ -43,10 +43,20 @@ Custom Room
 
 ## Installation
 
-1. Clone the repository into your Unity project's `Assets` folder.
-2. Add the `RoomGenerator` component to a GameObject in your scene.
+Option 1: Package Manager (Recommended)
 
-## Optional: FBX Export
+1. Open Unity and navigate to Window > Package Manager
+2. Click the + button in the top-left corner
+3. Select Add package from git URL...
+4. Paste the following URL: `https://github.com/jastrz/EZRoomGen.git` and install.
+
+Option 2: Manual Download
+   
+1. Clone or download and paste the repository into your Unity project's `Assets` folder.
+
+Add the `RoomGenerator` component to a GameObject in your scene.
+
+## FBX Export
 
 To enable FBX export functionality:
 
