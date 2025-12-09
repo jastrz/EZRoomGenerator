@@ -1,6 +1,6 @@
 # EZRoomGen
 
-**Editor-friendly, Realtime Grid-Based Procedural Room & Dungeon Generator for Unity**
+**Editor-friendly, Lightweight Grid-Based Procedural Room & Dungeon Generator for Unity**
 
 EZRoomGen lets you generate and edit rooms, dungeons, and mazes using an interactive grid. It automatically generates floor, wall, and roof meshes, adds colliders, and places lights.
 
@@ -42,11 +42,12 @@ To enable FBX export functionality:
 
 ## Notes
 
-- Generates Wall, Floor and Roof as separate meshes.
+- Generates Wall, Floor and Roof as separate meshes with adjustable mesh resolution.
 - Works with all pipelines, although sample materials are for URP, so some adjustments might be needed for them to work.
 - Contains simple FPP Controller (Player prefab) with a flashlight, of course.
 - Rooms can be joined manually by adding passages to form a larger structure.
-- Standalone PlayMode support has not been tested yet.
+- Exported .fbx works with Blender (tested with Blender 4.5, wasn't tested with other 3D software).
+- Lightbaking after prefab export is highly suggested due to possibly large count of light sources (if used). This might also need recalculating lightmap uvs (set in exported .fbx import settings) and reasigning materials for exported meshes.
 
 ---
 
