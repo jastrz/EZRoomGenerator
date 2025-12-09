@@ -123,15 +123,17 @@ namespace EZRoomGen.Core.Editor
 
                 var realtimeGeneration = GetRealtimeGeneration(generator);
 
-                EditorGUI.BeginChangeCheck();
-                float currentHeight = generator.GetCellHeight(selectedCell.x, selectedCell.y);
-                float newHeight = EditorGUILayout.Slider("Cell Height", currentHeight, 0f, 5f);
+                // Setting height disabled for now
 
-                if (EditorGUI.EndChangeCheck())
-                {
-                    generator.SetCellHeight(selectedCell.x, selectedCell.y, newHeight);
-                    if (realtimeGeneration) generator.GenerateRoom();
-                }
+                // EditorGUI.BeginChangeCheck();
+                // float currentHeight = generator.GetCellHeight(selectedCell.x, selectedCell.y);
+                // float newHeight = EditorGUILayout.Slider("Cell Height", currentHeight, 0f, 5f);
+
+                // if (EditorGUI.EndChangeCheck())
+                // {
+                //     generator.SetCellHeight(selectedCell.x, selectedCell.y, newHeight);
+                //     if (realtimeGeneration) generator.GenerateRoom();
+                // }
 
                 // Wall toggles - only show if cell has height
                 if (generator.GetCellHeight(selectedCell.x, selectedCell.y) > 0)

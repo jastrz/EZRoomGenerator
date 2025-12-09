@@ -19,7 +19,7 @@ namespace EZRoomGen.Core
 
         [Header("Room Parameters")]
         [SerializeField] private float defaultHeight = 2.5f;
-        [SerializeField] private int meshResolution = 2;
+        [SerializeField] private int meshResolution = 1;
         [SerializeField] private float uvScale = 1f;
         [SerializeField] private CellWinding cellWinding = CellWinding.Default;
         [SerializeField] private bool realtimeGeneration = true;
@@ -43,12 +43,24 @@ namespace EZRoomGen.Core
         [SerializeField][HideInInspector] private GridData gridData;
         [SerializeField][HideInInspector] private GameObject roomObject;
         [SerializeField] private LayoutGeneratorType generatorType;
+        [SerializeField] private LightsPlacer lightsPlacer;
         private RoomMeshGenerator roomMeshGenerator;
 
+        #region Layout Generators` settings
 
-        // Editor-only fields for grid interaction
+        [SerializeField] private RoomCorridorLayoutGeneratorSettings roomCorridorGeneratorSettings;
+        public RoomCorridorLayoutGeneratorSettings RoomCorridorGeneratorSettings => roomCorridorGeneratorSettings;
+        [SerializeField] private DungeonLayoutGeneratorSettings dungeonSettings;
+        public DungeonLayoutGeneratorSettings DungeonGeneratorSettings => dungeonSettings;
+        [SerializeField] private MazeLayoutLayoutGeneratorSettings mazeGeneratorSettings;
+        public MazeLayoutLayoutGeneratorSettings MazeGeneratorSettings => mazeGeneratorSettings;
+
+        #endregion
+
+        // Editor-only fields
         private int selectedX = -1;
         private int selectedY = -1;
+        [SerializeField] private bool generateLayoutAfterResize = false;
 
         private void Awake()
         {
@@ -134,7 +146,7 @@ namespace EZRoomGen.Core
         /// Resizes the grid to new dimensions, preserving existing cell data where possible.
         /// Dimensions are clamped between 2 and 50.
         /// </summary>
-        public void ResizeGrid(int newWidth, int newHeight)
+        public void ResizeGrid(int newWidth, int newHeight, bool preventShrinking = true)
         {
             gridWidth = Mathf.Clamp(newWidth, Constants.MinRoomWidth, Constants.MaxRoomWidth);
             gridHeight = Mathf.Clamp(newHeight, Constants.MinRoomHeight, Constants.MaxRoomHeight);
@@ -145,7 +157,7 @@ namespace EZRoomGen.Core
             }
             else
             {
-                gridData.ResizeGrid(ref gridWidth, ref gridHeight);
+                gridData.ResizeGrid(ref gridWidth, ref gridHeight, preventShrinking);
             }
 
             if (selectedX >= gridData.gridWidth || selectedY >= gridData.gridHeight)
@@ -157,21 +169,10 @@ namespace EZRoomGen.Core
 
         /// <summary>
         /// Generates the room mesh from the current grid data.
-        /// Destroys any previously generated room and creates a new one with floors, walls, roof, and optional lighting.
         /// </summary>
-        /// <returns>The newly generated room GameObject, or null if generation failed.</returns>
         public GameObject GenerateRoom()
         {
             if (gridData == null) InitializeGrid();
-
-            if (roomObject != null)
-            {
-                if (Application.isPlaying)
-                    Destroy(roomObject);
-                else
-                    DestroyImmediate(roomObject);
-                roomObject = null;
-            }
 
             roomMeshGenerator = new RoomMeshGenerator(
                 gridData,
@@ -184,24 +185,27 @@ namespace EZRoomGen.Core
                 invertRoof
             );
 
-            roomObject = roomMeshGenerator.GenerateRoom();
+            roomMeshGenerator.GenerateRoom(ref roomObject);
 
             if (roomObject != null)
             {
                 roomObject.transform.SetParent(transform);
                 roomObject.transform.localPosition = Vector3.zero;
                 roomObject.transform.localRotation = Quaternion.identity;
-            }
 
-            if (addColliders && roomObject != null)
-            {
-                AddCollidersToRoom(roomObject);
-            }
+                if (addColliders)
+                {
+                    AddCollidersToRoom(roomObject);
+                }
 
-            if (automaticallyAddLights && roomObject != null)
-            {
-                var lightsPlacer = new LightsPlacer(gridData);
-                lightsPlacer.AddCeilingLights(roomObject, lampPrefab, roomSpacing, corridorSpacing);
+                if (automaticallyAddLights)
+                {
+                    lightsPlacer.AddCeilingLights(gameObject, lampPrefab, gridData, roomSpacing, corridorSpacing);
+                }
+                else
+                {
+                    lightsPlacer.Clear();
+                }
             }
 
             return roomObject;

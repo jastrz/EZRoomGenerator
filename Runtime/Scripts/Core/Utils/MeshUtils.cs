@@ -123,6 +123,7 @@ namespace EZRoomGen.Core.Utils
 
             GameObject obj = new GameObject(name);
             obj.transform.parent = parent.transform;
+            obj.transform.localPosition = Vector3.zero;
 
             MeshFilter mf = obj.AddComponent<MeshFilter>();
             MeshRenderer mr = obj.AddComponent<MeshRenderer>();

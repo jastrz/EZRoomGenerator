@@ -48,9 +48,10 @@ namespace EZRoomGen.Core
         /// Walls are only created where there's a height difference between adjacent cells or at grid boundaries.
         /// </summary>
         /// <returns>A new GameObject containing the generated room meshes as children.</returns>
-        public GameObject GenerateRoom()
+        public GameObject GenerateRoom(ref GameObject roomObject)
         {
-            GameObject roomObject = new GameObject("Generated Room");
+            GameObject.DestroyImmediate(roomObject);
+            roomObject = new GameObject(Constants.DefaultRoomObjectName);
 
             List<Vector3> floorVerts = new List<Vector3>();
             List<int> floorTris = new List<int>();

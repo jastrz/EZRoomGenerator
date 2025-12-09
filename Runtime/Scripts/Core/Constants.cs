@@ -13,5 +13,6 @@ namespace EZRoomGen.Core
         public const string WallsMeshName = "Walls";
         public const string FloorMeshName = "Floor";
         public const string RoofMeshName = "Roof";
+        public const string DefaultRoomObjectName = "RoomObject";
     }
 }

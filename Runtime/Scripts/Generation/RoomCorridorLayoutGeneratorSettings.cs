@@ -1,8 +1,11 @@
+using System;
+
 namespace EZRoomGen.Generation
 {
     /// <summary>
     /// Settings used for Room Corridor layout generation.
     /// </summary>
+    [Serializable]
     public class RoomCorridorLayoutGeneratorSettings : LayoutGeneratorSettings
     {
         public int maxRooms = 10;

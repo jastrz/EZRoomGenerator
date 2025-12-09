@@ -29,7 +29,7 @@ namespace EZRoomGen.Core
             gridHeight = height;
             InitializeGrid();
         }
-        
+
         /// <summary>
         /// Creates and initializes the 2D cells array with new Cell instances.
         /// </summary>
@@ -83,32 +83,35 @@ namespace EZRoomGen.Core
 
         /// <summary>
         /// Resizes the grid to new dimensions while preserving existing cell data.
-        /// Automatically expands dimensions to prevent loss of non-empty cells when shrinking.
+        /// Can automatically expand dimensions to prevent loss of non-empty cells when shrinking.
         /// </summary>
-        public bool ResizeGrid(ref int newWidth, ref int newHeight)
+        public bool ResizeGrid(ref int newWidth, ref int newHeight, bool preventLoss = false)
         {
             Cell[,] oldCells = cells;
             int oldWidth = oldCells.GetLength(0);
             int oldHeight = oldCells.GetLength(1);
 
-            // Check if shrinking would lose non-empty cells
-            if (newWidth < oldWidth || newHeight < oldHeight)
+            if (preventLoss)
             {
-                // Check the areas that would be removed
-                for (int y = 0; y < oldHeight; y++)
+                // Check if shrinking would lose non-empty cells
+                if (newWidth < oldWidth || newHeight < oldHeight)
                 {
-                    for (int x = 0; x < oldWidth; x++)
+                    // Check the areas that would be removed
+                    for (int y = 0; y < oldHeight; y++)
                     {
-                        // Check if this cell is outside the new bounds AND has height > 0
-                        if (oldCells[x, y].height > 0)
+                        for (int x = 0; x < oldWidth; x++)
                         {
-                            if (x >= newWidth)
+                            // Check if this cell is outside the new bounds AND has height > 0
+                            if (oldCells[x, y].height > 0)
                             {
-                                newWidth = x + 1;
-                            }
-                            if (y >= newHeight)
-                            {
-                                newHeight = y + 1;
+                                if (x >= newWidth)
+                                {
+                                    newWidth = x + 1;
+                                }
+                                if (y >= newHeight)
+                                {
+                                    newHeight = y + 1;
+                                }
                             }
                         }
                     }

@@ -15,7 +15,7 @@ namespace EZRoomGen.Generation
 
         [Tooltip("Number of iterations for maze generation")]
         [Range(1, 10)]
-        public int iterations = 3;
+        public int iterations = 8;
 
         [Tooltip("Minimum path width")]
         [Range(1, 5)]

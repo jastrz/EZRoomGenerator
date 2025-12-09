@@ -5,6 +5,8 @@ using EZRoomGen.Generation;
 using EZRoomGen.Generation.Editor;
 using UnityEditor;
 using UnityEngine;
+using System.Collections.Generic;
+
 
 #if USE_FBX_EXPORTER
 using UnityEditor.Formats.Fbx.Exporter;
@@ -39,14 +41,13 @@ namespace EZRoomGen.Core.Editor
         private SerializedProperty addCollidersProp;
         private SerializedProperty invertRoofProp;
         private SerializedProperty generatorTypeProp;
+        private SerializedProperty generateLayoutAfterResizeProp;
 
         private RoomCorridorLayoutGeneratorEditor roomCorridorGeneratorEditor = new();
         private DungeonLayoutGeneratorEditor dungeonLayoutGeneratorEditor = new();
         private MazeLayoutGeneratorEditor mazeLayoutGeneratorEditor = new();
-        private RoomCorridorLayoutGeneratorSettings roomCorridorGeneratorSettings = new();
-        private DungeonLayoutGeneratorSettings dungeonLayoutGeneratorSettings = new();
-        private MazeLayoutLayoutGeneratorSettings mazeLayoutLayoutGeneratorSettings = new();
         private RoomGridDrawer gridDrawer = new();
+
         private ILayoutGenerator layoutGenerator;
         private RoomGenerator generator;
 
@@ -70,6 +71,7 @@ namespace EZRoomGen.Core.Editor
             addCollidersProp = serializedObject.FindProperty("addColliders");
             invertRoofProp = serializedObject.FindProperty("invertRoof");
             generatorTypeProp = serializedObject.FindProperty("generatorType");
+            generateLayoutAfterResizeProp = serializedObject.FindProperty("generateLayoutAfterResize");
         }
 
         public override void OnInspectorGUI()
@@ -102,7 +104,8 @@ namespace EZRoomGen.Core.Editor
 
             if (realtimeGenerationProp.boolValue && (paramsChanged || materialsChanged || lightingParamsChanged))
             {
-                generator.GenerateRoom();
+                // generator.GenerateRoom();
+                GenerateRoomFromLayout();
             }
         }
 
@@ -142,10 +145,18 @@ namespace EZRoomGen.Core.Editor
             if (EditorGUI.EndChangeCheck())
             {
                 serializedObject.ApplyModifiedProperties();
-                generator.ResizeGrid(gridWidthProp.intValue, gridHeightProp.intValue);
+
+                generator.ResizeGrid(gridWidthProp.intValue, gridHeightProp.intValue, !generateLayoutAfterResizeProp.boolValue);
                 if (realtimeGenerationProp.boolValue)
                 {
-                    generator.GenerateRoom();
+                    if (generateLayoutAfterResizeProp.boolValue)
+                    {
+                        GenerateRoomFromLayout();
+                    }
+                    else
+                    {
+                        generator.GenerateRoom();
+                    }
                 }
             }
 
@@ -165,6 +176,7 @@ namespace EZRoomGen.Core.Editor
             EditorGUILayout.Slider(uvScaleProp, 1f, 10f, new GUIContent("UV Scale"));
             EditorGUILayout.PropertyField(cellWindingProp);
             EditorGUILayout.PropertyField(realtimeGenerationProp);
+            EditorGUILayout.PropertyField(generateLayoutAfterResizeProp);
             EditorGUILayout.PropertyField(addCollidersProp);
             EditorGUILayout.PropertyField(invertRoofProp);
             bool changed = EditorGUI.EndChangeCheck();
@@ -278,21 +290,21 @@ namespace EZRoomGen.Core.Editor
 
             if (type == LayoutGeneratorType.RoomCorridor)
             {
-                shouldGenerate = roomCorridorGeneratorEditor.DrawInspector(roomCorridorGeneratorSettings);
-                roomCorridorGeneratorSettings.height = defaultHeightProp.floatValue;
-                layoutGenerator = new RoomCorridorLayoutGenerator(roomCorridorGeneratorSettings);
+                shouldGenerate = roomCorridorGeneratorEditor.DrawInspector(generator.RoomCorridorGeneratorSettings);
+                generator.RoomCorridorGeneratorSettings.height = defaultHeightProp.floatValue;
+                layoutGenerator = new RoomCorridorLayoutGenerator(generator.RoomCorridorGeneratorSettings);
             }
             else if (type == LayoutGeneratorType.Dungeon)
             {
-                shouldGenerate = dungeonLayoutGeneratorEditor.DrawInspector(dungeonLayoutGeneratorSettings);
-                dungeonLayoutGeneratorSettings.height = defaultHeightProp.floatValue;
-                layoutGenerator = new DungeonLayoutGenerator(dungeonLayoutGeneratorSettings);
+                shouldGenerate = dungeonLayoutGeneratorEditor.DrawInspector(generator.DungeonGeneratorSettings);
+                generator.DungeonGeneratorSettings.height = defaultHeightProp.floatValue;
+                layoutGenerator = new DungeonLayoutGenerator(generator.DungeonGeneratorSettings);
             }
             else if (type == LayoutGeneratorType.Maze)
             {
-                shouldGenerate = mazeLayoutGeneratorEditor.DrawInspector(mazeLayoutLayoutGeneratorSettings);
-                mazeLayoutLayoutGeneratorSettings.height = defaultHeightProp.floatValue;
-                layoutGenerator = new MazeLayoutGenerator(mazeLayoutLayoutGeneratorSettings);
+                shouldGenerate = mazeLayoutGeneratorEditor.DrawInspector(generator.MazeGeneratorSettings);
+                generator.MazeGeneratorSettings.height = defaultHeightProp.floatValue;
+                layoutGenerator = new MazeLayoutGenerator(generator.MazeGeneratorSettings);
             }
 
             if (realtimeGenerationProp.boolValue)
@@ -475,28 +487,31 @@ namespace EZRoomGen.Core.Editor
                 if (fbxModel != null)
                 {
                     GameObject fbxInstance = (GameObject)PrefabUtility.InstantiatePrefab(fbxModel, prefabRoot.transform);
-                    fbxInstance.name = "RoomMeshes";
+                    fbxInstance.name = Constants.DefaultRoomObjectName;
                 }
 
                 // Copy all prefab instances from the original hierarchy
-                Transform[] children = generator.RoomObject.GetComponentsInChildren<Transform>(true);
+                Transform[] children = generator.gameObject.GetComponentsInChildren<Transform>(true);
+                Dictionary<string, Transform> parentCache = new Dictionary<string, Transform>();
+
                 foreach (Transform child in children)
                 {
                     if (child == generator.RoomObject.transform) continue;
 
                     string childName = child.gameObject.name;
 
-                    // Skip Wall, Floor, and Roof since they're in the FBX
-                    if (childName == Constants.WallsMeshName || childName == Constants.FloorMeshName || childName == Constants.RoofMeshName)
+                    // Skip Wall, Floor, and Roof and room object's transform since they're in the FBX
+                    if (childName == Constants.WallsMeshName || childName == Constants.FloorMeshName
+                        || childName == Constants.RoofMeshName || childName == generator.RoomObject.name)
                         continue;
 
                     // Check if this object is a prefab instance
                     if (PrefabUtility.IsPartOfPrefabInstance(child.gameObject))
                     {
-                        // Get the outermost prefab instance (in case of nested prefabs)
+                        // Get the outermost prefab instance
                         GameObject prefabInstanceRoot = PrefabUtility.GetOutermostPrefabInstanceRoot(child.gameObject);
 
-                        // Only process if this is the root of the prefab instance (not a child of another prefab)
+                        // Only process if this is the root of the prefab instance
                         if (prefabInstanceRoot == child.gameObject)
                         {
                             // Get the source prefab asset
@@ -504,8 +519,19 @@ namespace EZRoomGen.Core.Editor
 
                             if (sourcePrefab != null)
                             {
+                                Transform originalParent = child.parent;
+                                string parentName = originalParent.name;
+
+                                // Get or create parent in the new hierarchy
+                                if (!parentCache.TryGetValue(parentName, out Transform targetParent))
+                                {
+                                    targetParent = new GameObject(parentName).transform;
+                                    targetParent.SetParent(prefabRoot.transform);
+                                    parentCache[parentName] = targetParent;
+                                }
+
                                 // Instantiate the prefab in the new hierarchy
-                                GameObject prefabInstance = (GameObject)PrefabUtility.InstantiatePrefab(sourcePrefab, prefabRoot.transform);
+                                GameObject prefabInstance = (GameObject)PrefabUtility.InstantiatePrefab(sourcePrefab, targetParent);
                                 prefabInstance.name = child.gameObject.name;
                                 prefabInstance.transform.localPosition = child.localPosition;
                                 prefabInstance.transform.localRotation = child.localRotation;
