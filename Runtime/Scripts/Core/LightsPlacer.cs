@@ -47,7 +47,7 @@ namespace EZRoomGen.Core
             {
                 for (int x = 0; x < gridData.gridWidth; x++)
                 {
-                    float height = gridData.cells[x, y].height;
+                    float height = gridData.GetCellHeight(x, y);
                     if (height <= 0) continue;
 
                     // Determine lighting rules

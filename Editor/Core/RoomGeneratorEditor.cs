@@ -27,6 +27,7 @@ namespace EZRoomGen.Core.Editor
         private SerializedProperty defaultHeightProp;
         private SerializedProperty meshResolutionProp;
         private SerializedProperty uvScaleProp;
+        private SerializedProperty heightScaleProp;
         private SerializedProperty cellWindingProp;
         private SerializedProperty realtimeGenerationProp;
         private SerializedProperty wallMaterialProp;
@@ -40,6 +41,8 @@ namespace EZRoomGen.Core.Editor
         private SerializedProperty invertRoofProp;
         private SerializedProperty generatorTypeProp;
         private SerializedProperty generateLayoutAfterResizeProp;
+        private SerializedProperty generatedInitialRoomProp;
+        private SerializedProperty generateLayoutProp;
 
         private RoomCorridorLayoutGeneratorEditor roomCorridorGeneratorEditor = new();
         private DungeonLayoutGeneratorEditor dungeonLayoutGeneratorEditor = new();
@@ -56,6 +59,7 @@ namespace EZRoomGen.Core.Editor
             defaultHeightProp = serializedObject.FindProperty("defaultHeight");
             meshResolutionProp = serializedObject.FindProperty("meshResolution");
             uvScaleProp = serializedObject.FindProperty("uvScale");
+            heightScaleProp = serializedObject.FindProperty("gridData").FindPropertyRelative("gridHeightScale");
             cellWindingProp = serializedObject.FindProperty("cellWinding");
             realtimeGenerationProp = serializedObject.FindProperty("realtimeGeneration");
             wallMaterialProp = serializedObject.FindProperty("wallMaterial");
@@ -69,12 +73,13 @@ namespace EZRoomGen.Core.Editor
             invertRoofProp = serializedObject.FindProperty("invertRoof");
             generatorTypeProp = serializedObject.FindProperty("generatorType");
             generateLayoutAfterResizeProp = serializedObject.FindProperty("generateLayoutAfterResize");
+            generatedInitialRoomProp = serializedObject.FindProperty("generatedInitialRoom");
+            generateLayoutProp = serializedObject.FindProperty("generateLayout");
 
             generator = (RoomGenerator)target;
             if (generator == null) return;
 
-            layoutGenerator = new DungeonLayoutGenerator(generator.DungeonGeneratorSettings);
-            GenerateRoomFromLayout();
+            HandleFirstRun();
         }
 
         public override void OnInspectorGUI()
@@ -200,13 +205,23 @@ namespace EZRoomGen.Core.Editor
         /// </summary>
         private bool DrawParameters()
         {
+            EditorGUILayout.LabelField("General Settings", EditorStyles.boldLabel);
+
             EditorGUI.BeginChangeCheck();
 
             // EditorGUILayout.IntSlider(meshResolutionProp, 1, 3, new GUIContent("Mesh Resolution"));
             // EditorGUILayout.Slider(uvScaleProp, 1f, 10f, new GUIContent("UV Scale"));
             EditorGUILayout.PropertyField(cellWindingProp);
+            EditorGUILayout.Slider(heightScaleProp, 0.1f, 10f, new GUIContent("Final Height Scale", "Height scale of final mesh, doesn't modify generated or drawn grid data."));
             EditorGUILayout.PropertyField(realtimeGenerationProp);
-            EditorGUILayout.PropertyField(generateLayoutAfterResizeProp);
+            if (generateLayoutProp.boolValue)
+            {
+                EditorGUILayout.PropertyField(generateLayoutAfterResizeProp);
+            }
+            else if (generateLayoutAfterResizeProp.boolValue)
+            {
+                generateLayoutAfterResizeProp.boolValue = false;
+            }
             EditorGUILayout.PropertyField(addCollidersProp);
             EditorGUILayout.PropertyField(invertRoofProp);
 
@@ -220,6 +235,8 @@ namespace EZRoomGen.Core.Editor
         /// </summary>
         private bool DrawMaterials()
         {
+            EditorGUILayout.LabelField("Materials", EditorStyles.boldLabel);
+
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(wallMaterialProp);
@@ -236,6 +253,8 @@ namespace EZRoomGen.Core.Editor
         /// </summary>
         private bool DrawLightPlacement()
         {
+            EditorGUILayout.LabelField("Lighting", EditorStyles.boldLabel);
+
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(automaticallyAddLightsProp);
@@ -313,7 +332,12 @@ namespace EZRoomGen.Core.Editor
         private void DrawLayoutGeneratorMenu()
         {
             EditorGUILayout.LabelField("Layout Generation", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(generateLayoutProp);
+
             EditorGUILayout.PropertyField(generatorTypeProp);
+
+            if (!generateLayoutProp.boolValue)
+                return;
 
             var index = generatorTypeProp.enumValueIndex;
             LayoutGeneratorType type = (LayoutGeneratorType)index;
@@ -335,7 +359,7 @@ namespace EZRoomGen.Core.Editor
             else if (type == LayoutGeneratorType.Maze)
             {
                 shouldGenerate = mazeLayoutGeneratorEditor.DrawInspector(generator.MazeGeneratorSettings);
-                if (shouldGenerate) generator.DefaultHeight = generator.DungeonGeneratorSettings.height;
+                if (shouldGenerate) generator.DefaultHeight = generator.MazeGeneratorSettings.height;
                 layoutGenerator = new MazeLayoutGenerator(generator.MazeGeneratorSettings);
             }
 
@@ -353,6 +377,21 @@ namespace EZRoomGen.Core.Editor
                 {
                     GenerateRoomFromLayout();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Generates initial room.
+        /// </summary>
+        private void HandleFirstRun()
+        {
+            if (!generatedInitialRoomProp.boolValue)
+            {
+                serializedObject.Update();
+                layoutGenerator = new DungeonLayoutGenerator(generator.DungeonGeneratorSettings);
+                GenerateRoomFromLayout();
+                generatedInitialRoomProp.boolValue = true;
+                serializedObject.ApplyModifiedProperties();
             }
         }
 
@@ -379,6 +418,7 @@ namespace EZRoomGen.Core.Editor
             try
             {
                 string directory = Path.GetDirectoryName(path);
+
                 if (!Directory.Exists(directory))
                     Directory.CreateDirectory(directory);
 

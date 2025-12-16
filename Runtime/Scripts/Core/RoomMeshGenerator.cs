@@ -69,7 +69,7 @@ namespace EZRoomGen.Core
             {
                 for (int x = 0; x < gridData.gridWidth; x++)
                 {
-                    float height = gridData.cells[x, y].height;
+                    float height = GetCellHeight(x, y);
                     if (height <= 0) continue;
 
                     bool flipped = cellWinding == CellWinding.Flipped;
@@ -99,10 +99,10 @@ namespace EZRoomGen.Core
                     }
 
                     // Walls
-                    float leftHeight = x > 0 ? gridData.cells[x - 1, y].height : 0;
-                    float rightHeight = x < gridData.gridWidth - 1 ? gridData.cells[x + 1, y].height : 0;
-                    float backHeight = y > 0 ? gridData.cells[x, y - 1].height : 0;
-                    float frontHeight = y < gridData.gridHeight - 1 ? gridData.cells[x, y + 1].height : 0;
+                    float leftHeight = x > 0 ? GetCellHeight(x - 1, y) : 0;
+                    float rightHeight = x < gridData.gridWidth - 1 ? GetCellHeight(x + 1, y) : 0;
+                    float backHeight = y > 0 ? GetCellHeight(x, y - 1) : 0;
+                    float frontHeight = y < gridData.gridHeight - 1 ? GetCellHeight(x, y + 1) : 0;
 
                     // Left Wall (at x, facing negative X)
                     if (leftHeight < height && gridData.cells[x, y].leftWall)
@@ -219,6 +219,12 @@ namespace EZRoomGen.Core
                 }
             }
         }
+
+        /// <summary>
+        /// Returns grid cell height.
+        /// </summary>m>
+        /// 
+        private float GetCellHeight(int x, int y) => gridData.GetCellHeight(x, y);
 
         /// <summary>
         /// Gets a default material appropriate for the current render pipeline.

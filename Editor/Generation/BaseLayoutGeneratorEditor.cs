@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 
 using UnityEditor;
+using UnityEngine;
 
 namespace EZRoomGen.Generation.Editor
 {
@@ -16,7 +17,7 @@ namespace EZRoomGen.Generation.Editor
         protected void DrawBaseFields(T settings)
         {
             settings.seed = EditorGUILayout.IntField("Seed", settings.seed);
-            settings.height = EditorGUILayout.Slider("Default Height", settings.height, 1f, 10f);
+            settings.height = EditorGUILayout.Slider(new GUIContent("Default Height", "Default height of generated layout's cells"), settings.height, 1f, 10f);
         }
     }
 }

@@ -23,11 +23,20 @@ namespace EZRoomGen.Core
         [SerializeField]
         public int gridHeight;
 
-        public GridData(int width, int height)
+        [SerializeField]
+        private float gridHeightScale;
+
+        public GridData(int width, int height, float heightScale = 1f)
         {
             gridWidth = width;
             gridHeight = height;
+            gridHeightScale = heightScale;
             InitializeGrid();
+        }
+
+        public float GetCellHeight(int x, int y)
+        {
+            return cells[x, y].height * gridHeightScale;
         }
 
         /// <summary>

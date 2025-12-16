@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,6 +17,8 @@ namespace EZRoomGen.Core.Editor
     {
         private const float gridPadding = 10f;
         private bool isDragging = false;
+        private bool isRightDragging = false;
+        private HashSet<(int x, int y)> selectedCells = new HashSet<(int x, int y)>();
 
         public float CellSize { get; set; } = 30f;
         public const float MinCellSize = 10f;
@@ -39,7 +43,7 @@ namespace EZRoomGen.Core.Editor
             EditorGUILayout.Space();
             EditorGUILayout.HelpBox(
                 "• Left-click and drag to paint cells\n" +
-                "• Right-click to select cell\n" +
+                "• Right-click and drag to select multiple cells\n" +
                 "• Middle-click and drag to erase cells\n" +
                 "• Ctrl + Scroll to zoom in/out",
                 MessageType.Info);
@@ -105,7 +109,7 @@ namespace EZRoomGen.Core.Editor
                     HandleCellInput(generator, x, y, cellRect, e, ref selectedCell);
 
                     bool isActive = generator.GetCellHeight(x, y) > 0;
-                    bool isSelected = (x == selectedCell.x && y == selectedCell.y);
+                    bool isSelected = selectedCells.Contains((x, y)) || (x == selectedCell.x && y == selectedCell.y);
 
                     DrawCell(generator, cellRect, x, y, isActive, isSelected);
                 }
@@ -115,6 +119,11 @@ namespace EZRoomGen.Core.Editor
             {
                 isDragging = false;
             }
+
+            if (e.type == EventType.MouseUp && e.button == 1)
+            {
+                isRightDragging = false;
+            }
         }
 
         /// <summary>
@@ -123,49 +132,70 @@ namespace EZRoomGen.Core.Editor
         private void DrawSelectedCellControls(RoomGenerator generator)
         {
             var selectedCell = GetSelectedCell(generator);
+            int totalSelected = selectedCells.Count + (selectedCell.x >= 0 && selectedCell.y >= 0 ? 1 : 0);
 
-            if (selectedCell.x >= 0 && selectedCell.y >= 0)
+            if (totalSelected > 0)
             {
-                EditorGUILayout.LabelField($"Selected Cell: ({selectedCell.x}, {selectedCell.y})", EditorStyles.boldLabel);
-
-                var realtimeGeneration = GetRealtimeGeneration(generator);
-
-                EditorGUI.BeginChangeCheck();
-                float currentHeight = generator.GetCellHeight(selectedCell.x, selectedCell.y);
-                float newHeight = EditorGUILayout.Slider("Cell Height", currentHeight, 0f, 10f);
-
-                if (EditorGUI.EndChangeCheck())
+                if (selectedCells.Count > 0)
                 {
-                    generator.SetCellHeight(selectedCell.x, selectedCell.y, newHeight);
-                    if (realtimeGeneration) generator.GenerateRoom();
-                }
+                    EditorGUILayout.LabelField($"Selected Cells: {selectedCells.Count}", EditorStyles.boldLabel);
 
-                // Wall toggles - only show if cell has height
-                if (generator.GetCellHeight(selectedCell.x, selectedCell.y) > 0)
-                {
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Walls", EditorStyles.boldLabel);
+                    var realtimeGeneration = GetRealtimeGeneration(generator);
 
+                    // Multi-cell height control
                     EditorGUI.BeginChangeCheck();
-
-                    bool leftWall = generator.GetCellWall(selectedCell.x, selectedCell.y, WallSide.Left);
-                    bool rightWall = generator.GetCellWall(selectedCell.x, selectedCell.y, WallSide.Right);
-                    bool backWall = generator.GetCellWall(selectedCell.x, selectedCell.y, WallSide.Back);
-                    bool frontWall = generator.GetCellWall(selectedCell.x, selectedCell.y, WallSide.Front);
-
-                    leftWall = EditorGUILayout.Toggle("Left Wall (West)", leftWall);
-                    rightWall = EditorGUILayout.Toggle("Right Wall (East)", rightWall);
-                    backWall = EditorGUILayout.Toggle("Back Wall (South)", backWall);
-                    frontWall = EditorGUILayout.Toggle("Front Wall (North)", frontWall);
+                    float avgHeight = selectedCells.Average(c => generator.GetCellHeight(c.x, c.y));
+                    float newHeight = EditorGUILayout.Slider("Set Height", avgHeight, 0f, 10f);
 
                     if (EditorGUI.EndChangeCheck())
                     {
-                        generator.SetCellWall(selectedCell.x, selectedCell.y, WallSide.Left, leftWall);
-                        generator.SetCellWall(selectedCell.x, selectedCell.y, WallSide.Right, rightWall);
-                        generator.SetCellWall(selectedCell.x, selectedCell.y, WallSide.Back, backWall);
-                        generator.SetCellWall(selectedCell.x, selectedCell.y, WallSide.Front, frontWall);
-
+                        foreach (var cell in selectedCells)
+                        {
+                            generator.SetCellHeight(cell.x, cell.y, newHeight);
+                        }
                         if (realtimeGeneration) generator.GenerateRoom();
+                    }
+
+                    // Multi-cell wall toggles (only if at least one cell has height)
+                    if (selectedCells.Any(c => generator.GetCellHeight(c.x, c.y) > 0))
+                    {
+                        EditorGUILayout.Space();
+                        EditorGUILayout.LabelField("Walls", EditorStyles.boldLabel);
+
+                        var cellsWithHeight = selectedCells
+                            .Where(c => generator.GetCellHeight(c.x, c.y) > 0)
+                            .ToList();
+
+                        bool leftWall = cellsWithHeight.All(c => generator.GetCellWall(c.x, c.y, WallSide.Left));
+                        bool rightWall = cellsWithHeight.All(c => generator.GetCellWall(c.x, c.y, WallSide.Right));
+                        bool backWall = cellsWithHeight.All(c => generator.GetCellWall(c.x, c.y, WallSide.Back));
+                        bool frontWall = cellsWithHeight.All(c => generator.GetCellWall(c.x, c.y, WallSide.Front));
+
+                        EditorGUI.BeginChangeCheck();
+
+                        leftWall = EditorGUILayout.Toggle("Left Wall (West)", leftWall);
+                        rightWall = EditorGUILayout.Toggle("Right Wall (East)", rightWall);
+                        backWall = EditorGUILayout.Toggle("Back Wall (South)", backWall);
+                        frontWall = EditorGUILayout.Toggle("Front Wall (North)", frontWall);
+
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            foreach (var cell in cellsWithHeight)
+                            {
+                                generator.SetCellWall(cell.x, cell.y, WallSide.Left, leftWall);
+                                generator.SetCellWall(cell.x, cell.y, WallSide.Right, rightWall);
+                                generator.SetCellWall(cell.x, cell.y, WallSide.Back, backWall);
+                                generator.SetCellWall(cell.x, cell.y, WallSide.Front, frontWall);
+                            }
+
+                            if (realtimeGeneration)
+                                generator.GenerateRoom();
+                        }
+                    }
+
+                    if (GUILayout.Button("Clear Selection"))
+                    {
+                        selectedCells.Clear();
                     }
                 }
             }
@@ -218,16 +248,24 @@ namespace EZRoomGen.Core.Editor
         /// <summary>
         /// Handles mouse input for a cell: painting, selecting, and erasing.
         /// - Left click/drag: Toggle or paint cells
-        /// - Right click: Select cell
+        /// - Right click/drag: Select multiple cells
         /// - Middle click/drag: Erase cells
         /// </summary>
-        private void HandleCellInput(RoomGenerator generator, int x, int y, Rect cellRect, Event e, ref (int x, int y) selectedCell)
+        private void HandleCellInput(
+            RoomGenerator generator,
+            int x,
+            int y,
+            Rect cellRect,
+            Event e,
+            ref (int x, int y) selectedCell)
         {
             bool isHovering = cellRect.Contains(e.mousePosition);
             if (!isHovering) return;
 
             var realtimeGeneration = GetRealtimeGeneration(generator);
             var defaultHeight = generator.DefaultHeight;
+
+            bool ctrlHeld = e.control || e.command;
 
             if (e.type == EventType.MouseDown && e.button == 0)
             {
@@ -238,8 +276,27 @@ namespace EZRoomGen.Core.Editor
             }
             else if (e.type == EventType.MouseDown && e.button == 1)
             {
-                SetSelectedCell(generator, x, y);
-                selectedCell = (x, y);
+                isRightDragging = true;
+
+                if (!ctrlHeld)
+                {
+                    selectedCells.Clear();
+                }
+
+                if (!selectedCells.Contains((x, y)))
+                {
+                    selectedCells.Add((x, y));
+                }
+
+                SetSelectedCell(generator, -1, -1); // Clear single selection
+                e.Use();
+            }
+            else if (e.type == EventType.MouseDrag && isRightDragging && e.button == 1)
+            {
+                if (!selectedCells.Contains((x, y)))
+                {
+                    selectedCells.Add((x, y));
+                }
                 e.Use();
             }
             else if (e.type == EventType.MouseDrag && isDragging && e.button == 0)
