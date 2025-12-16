@@ -222,8 +222,7 @@ namespace EZRoomGen.Core
 
         /// <summary>
         /// Returns grid cell height.
-        /// </summary>m>
-        /// 
+        /// </summary>
         private float GetCellHeight(int x, int y) => gridData.GetCellHeight(x, y);
 
         /// <summary>
