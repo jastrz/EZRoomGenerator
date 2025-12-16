@@ -248,7 +248,7 @@ namespace EZRoomGen.Core.Editor
         /// <summary>
         /// Handles mouse input for a cell: painting, selecting, and erasing.
         /// - Left click/drag: Toggle or paint cells
-        /// - Right click/drag: Select multiple cells
+        /// - Right click/drag: Select multiple cells (Ctrl to add to selection)
         /// - Middle click/drag: Erase cells
         /// </summary>
         private void HandleCellInput(

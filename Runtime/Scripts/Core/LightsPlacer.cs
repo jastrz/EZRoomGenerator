@@ -198,42 +198,38 @@ namespace EZRoomGen.Core
         }
 
         /// <summary>
-        /// Counts the number of walkable neighbors (up, down, left, right) for a given grid cell.
+        /// Counts the number of walkable neighbors for a given grid cell.
         /// </summary>
         private int CountWalkableNeighbors(int x, int y)
         {
             int count = 0;
-
-            if (IsWalkable(x + 1, y)) count++;
-            if (IsWalkable(x - 1, y)) count++;
-            if (IsWalkable(x, y + 1)) count++;
-            if (IsWalkable(x, y - 1)) count++;
-
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    if (IsWalkable(x + dx, y + dy)) count++;
+                }
+            }
             return count;
         }
 
-        /// <summary>
-        /// A ROOM tile has 3 or 4 walkable neighbors.
-        /// </summary>
         private bool IsRoom(int x, int y)
         {
             if (!IsWalkable(x, y)) return false;
 
             int n = CountWalkableNeighbors(x, y);
 
-            return n >= 3;
+            return n >= 4;
         }
 
-        /// <summary>
-        /// A CORRIDOR tile has exactly 1 or 2 walkable neighbors.
-        /// </summary>
         private bool IsCorridor(int x, int y)
         {
             if (!IsWalkable(x, y)) return false;
 
             int n = CountWalkableNeighbors(x, y);
 
-            return n == 1 || n == 2;
+            return n >= 1 && n < 3;
         }
     }
 }
