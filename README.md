@@ -24,14 +24,6 @@ Editable grid (max size 100x100)
 
 ![Grid](https://i.imgur.com/Gq8K7Rg.gif)
 
-Dungeon (40x40)
-
-![Dungeon](https://i.imgur.com/y70jZhA.gif)
-
-Rooms and Corridors (40x40)
-
-![Rooms and Corridors](https://i.imgur.com/RuKg3AB.gif)
-
 Rooms and Corridors (80x80)
 
 ![Rooms and Corridors](https://i.imgur.com/XfuVDhb.gif)
