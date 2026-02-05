@@ -32,16 +32,26 @@ Custom Room
 
 ![FPP](https://imgur.com/tD8SwYV.png)
 
+
+Youtube demo:
+
+[![Demo video](https://img.youtube.com/vi/Ocf4vTG5VxQ/0.jpg)](https://www.youtube.com/watch?v=Ocf4vTG5VxQ)
+
+
 ## Installation
 
-Option 1: Package Manager (Recommended)
+Option 1: Unity Package
+
+1. Download unitypackage from release folder and open it.
+
+Option 2: Package Manager
 
 1. Open Unity and navigate to Window > Package Manager
 2. Click the + button in the top-left corner
 3. Select Add package from git URL...
 4. Paste the following URL: `https://github.com/jastrz/EZRoomGenerator.git` and install.
 
-Option 2: Manual Download
+Option 3: Manual Download
 
 1. Clone the repository into your Unity project's `Assets` folder.
 
