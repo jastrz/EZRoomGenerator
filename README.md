@@ -42,7 +42,7 @@ Youtube demo:
 
 Option 1: Unity Package
 
-1. Download unitypackage from release folder and open it.
+1. Download .unitypackage from releases and open it.
 
 Option 2: Package Manager
 
